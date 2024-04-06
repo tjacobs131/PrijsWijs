@@ -15,6 +15,7 @@ import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.Locale
+import kotlin.time.Duration.Companion.hours
 
 class EnergyNotificationService : Service() {
 
@@ -37,7 +38,15 @@ class EnergyNotificationService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(notificationId, createInitialNotification())
+        createNotificationChannel()
+
+        val initNotification = createInitialNotification()
+        startForeground(notificationId, initNotification)
+
+        notificationManager!!.notify(
+            notificationId,
+            initNotification
+        ) // Show initial notification
 
         // Start your notification update logic here
         startNotificationUpdateTask()
@@ -53,23 +62,12 @@ class EnergyNotificationService : Service() {
             .build()
     }
 
+    private fun createNotificationChannel(){
+        val notificationChannel = NotificationChannel(notificationChannel, "Hourly Energy Prices", NotificationManager.IMPORTANCE_HIGH)
+        notificationManager!!.createNotificationChannel(notificationChannel)
+    }
+
     private fun createForegroundNotification(priceData: Map<Date, Double>): Notification {
-        if (firstTime){ // Setup the notification channel
-            this.notificationBuilder!!
-                .setContentTitle("\uD83D\uDD0C  Today's Energy Prices  ⚡\uFE0F")
-                .setSmallIcon(R.drawable.notification_icon)
-                .setOnlyAlertOnce(true)
-                .setVisibility(Notification.VISIBILITY_PUBLIC)
-
-            val notificationChannel = NotificationChannel(notificationChannel, "Hourly Energy Prices", NotificationManager.IMPORTANCE_HIGH)
-            notificationChannel.importance = NotificationManager.IMPORTANCE_HIGH
-            notificationChannel.enableVibration(true)
-            notificationChannel.vibrationPattern = longArrayOf(0, 1000, 500, 1000)
-            notificationManager!!.createNotificationChannel(notificationChannel)
-
-            firstTime = false
-        }
-
         return this.notificationBuilder!!
             .setContentText(generateHourlyNotificationMessage(priceData))
             .setStyle(Notification.BigTextStyle().bigText(generateHourlyNotificationMessage(priceData)))
@@ -89,6 +87,7 @@ class EnergyNotificationService : Service() {
     private fun millisTillNextHour(): Long {
         val now = LocalDateTime.now()
         val nextHour = now.plusHours(1).truncatedTo(ChronoUnit.HOURS)
+        println(now.until(nextHour, ChronoUnit.MILLIS))
         return now.until(nextHour, ChronoUnit.MILLIS)
     }
 
@@ -99,7 +98,7 @@ class EnergyNotificationService : Service() {
         var lastPrice = 0.0
         priceData.keys.forEach { date ->
             val price = priceData[date]
-            if (date == Date() || date.before(Date())) {
+            if (priceData.keys.indexOf(date) == 0) {
                 returnString += "\uD83D\uDCA1Now: €%.2f\n".format(priceData[date])
 
                 lastPrice = price!!

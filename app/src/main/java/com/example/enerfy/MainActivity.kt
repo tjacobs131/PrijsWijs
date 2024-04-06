@@ -17,20 +17,25 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 class MainActivity : ComponentActivity() {
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         requestPermissions()
+
+        startHourlyNotificationDisplay()
 
 
         setContent {
@@ -41,20 +46,25 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Greeting(
                         name = "Android",
-                        onShowNotificationClick = { startHourlyNotificationDisplay() }
+                        onShowNotificationClick = { (startHourlyNotificationDisplay()) }
                     )
                 }
             }
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun requestPermissions() {
-        registerForActivityResult(ActivityResultContracts.RequestPermission()
-        ) { isGranted: Boolean ->
-            if (isGranted) {
-                return@registerForActivityResult
-            }
-        }
+        val allPermissions = 101
+        val permissions = arrayOf(
+            android.Manifest.permission.POST_NOTIFICATIONS,
+            android.Manifest.permission.INTERNET,
+            android.Manifest.permission.VIBRATE,
+            android.Manifest.permission.FOREGROUND_SERVICE,
+            android.Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC,
+            android.Manifest.permission.RECEIVE_BOOT_COMPLETED
+        )
+        ActivityCompat.requestPermissions(this, permissions, allPermissions)
     }
 
     private fun startHourlyNotificationDisplay(){
