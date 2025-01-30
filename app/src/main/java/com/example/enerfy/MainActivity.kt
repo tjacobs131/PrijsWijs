@@ -1,42 +1,41 @@
 package com.example.enerfy
 
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.example.enerfy.ui.theme.EnerfyTheme
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
-import android.content.Intent
-import android.os.Build
-import android.util.Log
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import com.example.enerfy.ui.theme.EnerfyTheme
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+
 
 class MainActivity : ComponentActivity() {
 
-    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         requestPermissions()
 
-        startHourlyNotificationDisplay()
+        println("Showing first notification")
 
+        AlarmScheduler.scheduleHourlyAlarm(this)
+
+        // In MainActivity's onCreate()
+        Intent(this, EnergyNotificationService::class.java).also { intent ->
+            startService(intent)
+        }
 
         setContent {
             EnerfyTheme {
@@ -44,16 +43,17 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Greeting(
-                        name = "Android",
-                        onShowNotificationClick = { (startHourlyNotificationDisplay()) }
-                    )
                 }
             }
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun scheduleAlarm() {
+
+
+
+    }
+
     private fun requestPermissions() {
         val allPermissions = 101
         val permissions = arrayOf(
@@ -61,15 +61,11 @@ class MainActivity : ComponentActivity() {
             android.Manifest.permission.INTERNET,
             android.Manifest.permission.VIBRATE,
             android.Manifest.permission.FOREGROUND_SERVICE,
-            android.Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC,
-            android.Manifest.permission.RECEIVE_BOOT_COMPLETED
+            android.Manifest.permission.REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND,
+            android.Manifest.permission.RECEIVE_BOOT_COMPLETED,
+            android.Manifest.permission.WAKE_LOCK
         )
         ActivityCompat.requestPermissions(this, permissions, allPermissions)
-    }
-
-    private fun startHourlyNotificationDisplay(){
-        val serviceIntent = Intent(this, EnergyNotificationService::class.java)
-        startService(serviceIntent)
     }
 
     @Composable
@@ -77,10 +73,6 @@ class MainActivity : ComponentActivity() {
         Column(
             modifier = modifier
         ) {
-            Text(
-                text = "Hello $name!",
-                modifier = Modifier.padding(16.dp)
-            )
             Button(
                 onClick = onShowNotificationClick,
                 modifier = Modifier.padding(16.dp)
