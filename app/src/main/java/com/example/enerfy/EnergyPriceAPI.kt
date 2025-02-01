@@ -1,3 +1,4 @@
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -7,7 +8,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-
+import java.util.logging.Logger
 
 class EnergyPriceAPI {
     suspend fun getTodaysEnergyPrices(): Triple<Map<Date, Double>, Double, Double> = withContext(Dispatchers.IO) {
@@ -22,7 +23,7 @@ class EnergyPriceAPI {
         val localStartTime = calendar.time
 
         calendar.time = Date()
-        calendar.add(Calendar.HOUR_OF_DAY, 24) // Cover next 24 hours
+        calendar.add(Calendar.HOUR_OF_DAY, 20) // Cover next 20 hours
         val localEndTime = calendar.time
 
         // Format API request dates as UTC
@@ -64,32 +65,33 @@ class EnergyPriceAPI {
             sortedEntries
         } else {
             val selected = mutableListOf<Map.Entry<Date, Double>>()
-            val keepInitialEntries = 4 // Keep first 3 entries for detailed view
+            val keepInitialEntries = 4
             selected.addAll(sortedEntries.take(keepInitialEntries))
 
-            val remainingEntries = totalEntries - keepInitialEntries
+            val remainingEntries = sortedEntries.subList(keepInitialEntries, sortedEntries.size)
             val neededEntries = desiredMaxEntries - keepInitialEntries
 
-            if (neededEntries > 0) {
-                val step = remainingEntries.toDouble() / neededEntries.toDouble()
-                var currentPosition = keepInitialEntries.toDouble()
-
-                repeat(neededEntries) {
-                    val index = currentPosition.toInt()
-                    if (index < totalEntries) {
-                        selected.add(sortedEntries[index])
-                    }
-                    currentPosition += step
-                }
+            val power = 2.0 // Adjust this value to control the rate of step increase
+            for (i in 0 until neededEntries) {
+                val fraction: Double =
+                    if (neededEntries == 1) 0.0 else i.toDouble() / (neededEntries - 1)
+                val indexInRemaining =
+                    (Math.pow(fraction, power) * (remainingEntries.size - 1)).toInt()
+                selected.add(remainingEntries[indexInRemaining])
             }
+
             selected
         }
 
-        val filteredDatesAndPrices = selectedEntries.associate { it.key to it.value }
-        val maxPrice = filteredDatesAndPrices.values.maxOrNull() ?: 0.0
-        val minPrice = filteredDatesAndPrices.values.minOrNull() ?: 0.0
+        // Calculate global min/max from ALL prices (not just filtered)
+        val maxPrice = datesAndPrices.values.maxOrNull() ?: 0.0
+        val minPrice = datesAndPrices.values.minOrNull() ?: 0.0
 
-        return@withContext Triple(filteredDatesAndPrices, maxPrice, minPrice)
+        return@withContext Triple(
+            selectedEntries.associate { it.key to it.value },  // Filtered subset
+            maxPrice,  // Global maximum
+            minPrice   // Global minimum
+        )
     }
 
     private fun sendGet(url: URL): String {

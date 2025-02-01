@@ -7,6 +7,10 @@ import android.os.Build
 
 
 class BootReceiver : BroadcastReceiver() {
+
+  var persistence: Persistence? = null
+  var settings: Settings? = null
+
   override fun onReceive(context: Context, intent: Intent?) {
 
     if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
@@ -15,8 +19,13 @@ class BootReceiver : BroadcastReceiver() {
       val serviceIntent = Intent(context, EnergyNotificationService::class.java)
       context.startForegroundService(serviceIntent)
 
+      persistence = Persistence(context)
+
+      // Load settings
+      settings = persistence!!.loadSettings()
+
       // Schedule hourly updates
-      AlarmScheduler.scheduleHourlyAlarm(context)
+      AlarmScheduler.scheduleHourlyAlarm(context, settings!!.bedTime, settings!!.wakeUpTime)
     }
   }
 }
