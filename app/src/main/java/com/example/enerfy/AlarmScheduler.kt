@@ -46,7 +46,7 @@ object AlarmScheduler {
                 add(Calendar.DAY_OF_MONTH, 1)
                 set(Calendar.HOUR_OF_DAY, wakeUpTime)
                 set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 5)
+                set(Calendar.SECOND, 10)
                 set(Calendar.MILLISECOND, 0)
             }
 

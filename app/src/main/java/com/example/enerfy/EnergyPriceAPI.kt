@@ -9,6 +9,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.logging.Logger
+import kotlin.math.pow
 
 class EnergyPriceAPI {
     suspend fun getTodaysEnergyPrices(): Triple<Map<Date, Double>, Double, Double> = withContext(Dispatchers.IO) {
@@ -47,7 +48,8 @@ class EnergyPriceAPI {
             val priceInfo = prices.getJSONObject(i)
             val utcDate = readDateFormat.parse(priceInfo.getString("readingDate"))!!
 
-            if (utcDate.before(Date())) {
+            // Skip past times, but include the current hour
+            if (utcDate.before(localStartTime)) {
                 continue
             }
 
@@ -80,7 +82,7 @@ class EnergyPriceAPI {
                 val fraction: Double =
                     if (neededEntries == 1) 0.0 else i.toDouble() / (neededEntries - 1)
                 val indexInRemaining =
-                    (Math.pow(fraction, power) * (remainingEntries.size - 1)).toInt()
+                    (fraction.pow(power) * (remainingEntries.size - 1)).toInt()
                 selected.add(remainingEntries[indexInRemaining])
             }
 
