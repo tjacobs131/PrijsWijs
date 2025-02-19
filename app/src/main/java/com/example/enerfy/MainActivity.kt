@@ -191,7 +191,9 @@ class MainActivity : ComponentActivity() {
                     )
 
                     Button(
-                        modifier = Modifier.padding(top = 16.dp),
+                        modifier = Modifier
+                            .padding(top = 16.dp)
+                            .align(Alignment.End),
                         onClick = {
                             // Show notification
                             Intent(
@@ -202,7 +204,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     ) {
-                        Text("Show Notification")
+                        Text("Refresh Notification")
                     }
                 }
             }
