@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import java.time.LocalDateTime
 import java.util.Calendar
 import android.provider.Settings as AndroidSettings
@@ -49,7 +50,7 @@ object AlarmScheduler {
                 set(Calendar.MILLISECOND, 0)
             }
 
-            println("Time to next alarm: ${calendar.time} / ${calendar.timeInMillis}")
+            Log.println(Log.INFO, "Enerfy", "Time to next alarm: ${calendar.time} / ${calendar.timeInMillis}")
 
             alarmManager.canScheduleExactAlarms()
             alarmManager.setExactAndAllowWhileIdle(
@@ -69,7 +70,7 @@ object AlarmScheduler {
             set(Calendar.MILLISECOND, 0)
         }
 
-        println("Time to next alarm: ${calendar.time} / ${calendar.timeInMillis}")
+        Log.println(Log.INFO, "Enerfy", "Time to next alarm: ${calendar.time} / ${calendar.timeInMillis}")
 
         alarmManager.canScheduleExactAlarms()
         alarmManager.setExactAndAllowWhileIdle(

@@ -8,6 +8,6 @@ class Settings {
   var wakeUpTime: Int = 6
 
   // Notification vibration
-  var vibrate: Boolean = true
+  var vibrate: Boolean = false
 
 }

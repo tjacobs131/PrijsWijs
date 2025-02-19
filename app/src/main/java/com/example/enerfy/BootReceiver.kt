@@ -3,7 +3,7 @@ package com.example.enerfy
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.os.Build
+import android.util.Log
 
 
 class BootReceiver : BroadcastReceiver() {
@@ -19,10 +19,12 @@ class BootReceiver : BroadcastReceiver() {
       val serviceIntent = Intent(context, EnergyNotificationService::class.java)
       context.startForegroundService(serviceIntent)
 
-      persistence = Persistence(context)
+      Log.println(Log.INFO, "Enerfy", "BootReceiver triggered")
+
+      persistence = Persistence.getInstance(context)
 
       // Load settings
-      settings = persistence!!.loadSettings()
+      settings = persistence!!.loadSettings(context)
 
       // Schedule hourly updates
       AlarmScheduler.scheduleHourlyAlarm(context, settings!!.bedTime, settings!!.wakeUpTime)

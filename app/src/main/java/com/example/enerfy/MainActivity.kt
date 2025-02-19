@@ -1,9 +1,8 @@
 package com.example.enerfy
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
@@ -33,8 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import com.example.enerfy.ui.theme.EnerfyTheme
-import java.time.LocalDateTime
-import java.time.temporal.ChronoUnit
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -46,29 +43,27 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-    var vibrateEnabled by mutableStateOf(true)
-    var soundEnabled by mutableStateOf(false)
+    var vibrateEnabled by mutableStateOf(false)
     var bedTimeHour by mutableStateOf(21)  // 21h
     var wakeTimeHour by mutableStateOf(6)  // 6h
 
-    val persistence = Persistence(this)
+    val persistence = Persistence.getInstance(this)
     var settings: Settings? = null
 
     var showPopup by mutableStateOf(false)
     var popupMessage by mutableStateOf("")
 
-    fun saveSettings(){
+    private fun saveSettings(){
         val settings = Settings()
         settings.vibrate = vibrateEnabled
         settings.bedTime = bedTimeHour
         settings.wakeUpTime = wakeTimeHour
-        persistence.saveSettings(settings)
-
-        AlarmScheduler.scheduleHourlyAlarm(this, settings!!.bedTime, settings!!.wakeUpTime)
+        persistence.saveSettings(this, settings)
+        this.settings = persistence.loadSettings(this)
     }
 
-    fun loadSettings(){
-        settings = persistence.loadSettings()
+    private fun loadSettings(){
+        settings = persistence.loadSettings(this)
         vibrateEnabled = settings!!.vibrate
         bedTimeHour = settings!!.bedTime
         wakeTimeHour = settings!!.wakeUpTime
@@ -81,16 +76,14 @@ class MainActivity : ComponentActivity() {
 
         requestPermissions()
 
-        println("Showing first notification")
+        Log.println(Log.INFO, "Enerfy", "Showing first notification")
 
         AlarmScheduler.scheduleHourlyAlarm(this, settings!!.bedTime, settings!!.wakeUpTime)
 
-        // In MainActivity's onCreate()
         Intent(this, EnergyNotificationService::class.java).also { intent ->
             startService(intent)
         }
 
-        // In MainActivity's setContent block:
         setContent {
             EnerfyTheme {
                 SettingsScreen(
@@ -106,13 +99,15 @@ class MainActivity : ComponentActivity() {
                     onBedTimeChanged = { newHour ->
                         bedTimeHour = newHour
                         saveSettings()
-                        popupMessage = "Notifications will turn off at ${String.format("%02d:00", newHour)}"
+                        AlarmScheduler.scheduleHourlyAlarm(this, this.settings!!.bedTime, this.settings!!.wakeUpTime)
+                        popupMessage = "Last notification of the day at ${String.format("%02d:00", newHour)}"
                         showPopup = true
                     },
                     onWakeTimeChanged = { newHour ->
                         wakeTimeHour = newHour
                         saveSettings()
-                        popupMessage = "Notifications will turn on at ${String.format("%02d:00", newHour)}"
+                        AlarmScheduler.scheduleHourlyAlarm(this, this.settings!!.bedTime, this.settings!!.wakeUpTime)
+                        popupMessage = "Notifications turn back on at ${String.format("%02d:00", newHour)}"
                         showPopup = true
                     },
                     showPopup = showPopup,
@@ -190,10 +185,25 @@ class MainActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     HourSelector(
-                        label = "Wake Up Time",
+                        label = "Wake-Up Time",
                         currentHour = wakeTimeHour,
                         onHourSelected = onWakeTimeChanged
                     )
+
+                    Button(
+                        modifier = Modifier.padding(top = 16.dp),
+                        onClick = {
+                            // Show notification
+                            Intent(
+                                this@MainActivity,
+                                EnergyNotificationService::class.java
+                            ).also { intent ->
+                                startService(intent)
+                            }
+                        }
+                    ) {
+                        Text("Show Notification")
+                    }
                 }
             }
         }
@@ -206,7 +216,13 @@ class MainActivity : ComponentActivity() {
         currentHour: Int,
         onHourSelected: (Int) -> Unit
     ) {
-        val hours = (0..23).toList()
+        var hours:List<Int>? = null
+        if ("Bed Time" in label) {
+            hours = (16..23).toList().plus(0 .. 15).toList()
+        } else {
+            hours = (4..23).toList().plus(0 .. 4).toList()
+        }
+
         var expanded by remember { mutableStateOf(false) }
 
         Row(
@@ -270,7 +286,6 @@ class MainActivity : ComponentActivity() {
             android.Manifest.permission.FOREGROUND_SERVICE,
             android.Manifest.permission.REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND,
             android.Manifest.permission.RECEIVE_BOOT_COMPLETED,
-            android.Manifest.permission.WAKE_LOCK
         )
         ActivityCompat.requestPermissions(this, permissions, allPermissions)
     }
