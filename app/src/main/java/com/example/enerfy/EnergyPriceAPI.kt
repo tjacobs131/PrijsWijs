@@ -47,6 +47,10 @@ class EnergyPriceAPI {
             val priceInfo = prices.getJSONObject(i)
             val utcDate = readDateFormat.parse(priceInfo.getString("readingDate"))!!
 
+            if (utcDate.before(Date())) {
+                continue
+            }
+
             // Convert UTC Date to Amsterdam time representation
             val amsterdamCalendar = Calendar.getInstance(amsterdamTZ).apply {
                 timeInMillis = utcDate.time
