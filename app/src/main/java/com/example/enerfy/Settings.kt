@@ -1,4 +1,4 @@
-package com.example.enerfy
+package com.example.prijswijs
 
 class Settings {
   // Bed time - in hours (int)

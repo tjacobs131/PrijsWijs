@@ -1,4 +1,4 @@
-package com.example.enerfy
+package com.example.prijswijs
 
 import android.content.Intent
 import android.os.Bundle
@@ -31,7 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import com.example.enerfy.ui.theme.EnerfyTheme
+import com.example.prijswijs.ui.theme.PrijsWijsTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
 
         requestPermissions()
 
-        Log.println(Log.INFO, "Enerfy", "Showing first notification")
+        Log.println(Log.INFO, "PrijsWijs", "Showing first notification")
 
         AlarmScheduler.scheduleHourlyAlarm(this, settings!!.bedTime, settings!!.wakeUpTime)
 
@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            EnerfyTheme {
+            PrijsWijsTheme {
                 SettingsScreen(
                     vibrateEnabled = vibrateEnabled,
                     bedTimeHour = bedTimeHour,
@@ -164,7 +164,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(vertical = 8.dp)
                     ) {
                         Text(
-                            text = "Vibrate",
+                            text = "Vibrate Every Hour",
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.weight(1f)
                         )

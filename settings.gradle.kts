@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Enerfy"
+rootProject.name = "PrijsWijs"
 include(":app")

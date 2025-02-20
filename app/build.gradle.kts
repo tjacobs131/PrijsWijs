@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.enerfy"
+    namespace = "com.example.prijswijs"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.enerfy"
+        applicationId = "com.example.prijswijs"
         minSdk = 33
         targetSdk = 34
         versionCode = 1

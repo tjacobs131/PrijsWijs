@@ -1,4 +1,4 @@
-package com.example.enerfy
+package com.example.prijswijs
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -19,7 +19,7 @@ class BootReceiver : BroadcastReceiver() {
       val serviceIntent = Intent(context, EnergyNotificationService::class.java)
       context.startForegroundService(serviceIntent)
 
-      Log.println(Log.INFO, "Enerfy", "BootReceiver triggered")
+      Log.println(Log.INFO, "PrijsWijs", "BootReceiver triggered")
 
       persistence = Persistence.getInstance(context)
 

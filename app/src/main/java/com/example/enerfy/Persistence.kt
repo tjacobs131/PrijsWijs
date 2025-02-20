@@ -1,4 +1,4 @@
-package com.example.enerfy
+package com.example.prijswijs
 
 import android.content.Context
 

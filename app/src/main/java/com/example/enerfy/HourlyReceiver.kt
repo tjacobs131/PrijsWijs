@@ -1,4 +1,4 @@
-package com.example.enerfy
+package com.example.prijswijs
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -14,7 +14,7 @@ class HourlyReceiver : BroadcastReceiver() {
         // Start service to show notification
         context.startService(Intent(context, EnergyNotificationService::class.java))
 
-        Log.println(Log.INFO, "Enerfy", "HourlyReceiver triggered")
+        Log.println(Log.INFO, "PrijsWijs", "HourlyReceiver triggered")
 
         // Load settings
         persistence = Persistence.getInstance(context)

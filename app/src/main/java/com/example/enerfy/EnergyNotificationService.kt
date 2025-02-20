@@ -1,4 +1,4 @@
-package com.example.enerfy
+package com.example.prijswijs
 
 import EnergyPriceAPI
 import android.app.Notification
@@ -69,28 +69,34 @@ class EnergyNotificationService : Service() {
             try {
                 val prices = EnergyPriceAPI().getTodaysEnergyPrices()
 
-                Log.println(Log.INFO, "Enerfy", "Prices fetched, generating message")
+                Log.println(Log.INFO, "PrijsWijs", "Prices fetched, generating message")
 
                 val message = generateHourlyNotificationMessage(prices)
 
-                Log.println(Log.INFO, "Enerfy", "Showing message: $message")
+                Log.println(Log.INFO, "PrijsWijs", "Showing message: $message")
 
                 withContext(Dispatchers.Main) {
                     (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
                         .notify(FINAL_NOTIFICATION_ID, buildFinalNotification(message))
 
-                    Log.println(Log.INFO, "Enerfy", "Notification shown")
+                    Log.println(Log.INFO, "PrijsWijs", "Notification shown")
 
-                    // Stop service after showing notification
-                    stopSelf()
-
-                    // Only stop after confirmation
+                    // Check after 15 seconds if the notification is shown
                     Handler(Looper.getMainLooper()).postDelayed({
-                        stopSelf()
-                    }, 30000) // 30-second delay to ensure delivery
+                        if ((getSystemService(NOTIFICATION_SERVICE) as NotificationManager).activeNotifications.none { it.id == FINAL_NOTIFICATION_ID }) {
+                            Log.println(Log.INFO, "PrijsWijs", "Notification not shown, retrying")
+                            showNotification()
+                        } else {
+                            Log.println(Log.INFO, "PrijsWijs", "Notification shown")
+                        }
+                    }, 15000)
                 }
+
+                // Stop service after showing notification
+                stopSelf()
             } catch (e: Exception) {
                 android.util.Log.e("SERVICE_ERROR", "Notification failed", e)
+
                 stopSelf()
             }
         }

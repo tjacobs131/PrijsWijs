@@ -1,4 +1,4 @@
-package com.example.enerfy
+package com.example.prijswijs
 
 import android.app.AlarmManager
 import android.app.PendingIntent
@@ -50,7 +50,7 @@ object AlarmScheduler {
                 set(Calendar.MILLISECOND, 0)
             }
 
-            Log.println(Log.INFO, "Enerfy", "Time to next alarm: ${calendar.time} / ${calendar.timeInMillis}")
+            Log.println(Log.INFO, "PrijsWijs", "Time to next alarm: ${calendar.time} / ${calendar.timeInMillis}")
 
             alarmManager.canScheduleExactAlarms()
             alarmManager.setExactAndAllowWhileIdle(
@@ -70,7 +70,7 @@ object AlarmScheduler {
             set(Calendar.MILLISECOND, 0)
         }
 
-        Log.println(Log.INFO, "Enerfy", "Time to next alarm: ${calendar.time} / ${calendar.timeInMillis}")
+        Log.println(Log.INFO, "PrijsWijs", "Time to next alarm: ${calendar.time} / ${calendar.timeInMillis}")
 
         alarmManager.canScheduleExactAlarms()
         alarmManager.setExactAndAllowWhileIdle(
