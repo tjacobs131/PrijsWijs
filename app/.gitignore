@@ -1,1 +1,29 @@
-/build
+# Built application files
+/build/
+/app/build/
+
+# Gradle files
+.gradle/
+local.properties
+
+# Gradle Test Kit
+/testKit/
+
+# Android Studio Specific
+*.iml
+.idea/
+*.ipr
+*.iws
+.idea/libraries
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.DS_Store
+
+# Kotlin specific
+*.class
+*.jar
+
+# Misc
+captures/
