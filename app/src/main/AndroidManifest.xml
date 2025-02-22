@@ -44,7 +44,7 @@
         </receiver>
 
         <receiver
-            android:name=".HourlyReceiver"
+            android:name=".Alarms.HourlyReceiver"
             android:enabled="true"
             android:exported="false">
             <intent-filter>
@@ -54,7 +54,7 @@
 
         <!-- Notification Service -->
         <service
-            android:name=".EnergyNotificationService"
+            android:name=".Notifications.EnergyNotificationService"
             android:foregroundServiceType="remoteMessaging"
             android:exported="false"
             android:stopWithTask="false" />

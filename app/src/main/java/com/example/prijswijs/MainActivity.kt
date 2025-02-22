@@ -44,6 +44,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import com.example.prijswijs.Alarms.AlarmScheduler
+import com.example.prijswijs.Notifications.EnergyNotificationService
+import com.example.prijswijs.Persistence.Persistence
+import com.example.prijswijs.Persistence.Settings
 import com.example.prijswijs.ui.theme.PrijsWijsTheme
 import kotlinx.coroutines.launch
 
@@ -65,7 +69,7 @@ class MainActivity : ComponentActivity() {
 
         Log.println(Log.INFO, "PrijsWijs", "Showing first notification")
 
-        AlarmScheduler.scheduleHourlyAlarm(this, settings.bedTime, settings.wakeUpTime)
+        AlarmScheduler.scheduleHourlyAlarm(this)
 
         Intent(this, EnergyNotificationService::class.java).also { intent ->
             startService(intent)
@@ -84,12 +88,12 @@ class MainActivity : ComponentActivity() {
                     onBedTimeChanged = { newHour ->
                         bedTimeHour = newHour
                         saveSettings()
-                        AlarmScheduler.scheduleHourlyAlarm(this, settings.bedTime, settings.wakeUpTime)
+                        AlarmScheduler.scheduleHourlyAlarm(this)
                     },
                     onWakeTimeChanged = { newHour ->
                         wakeTimeHour = newHour
                         saveSettings()
-                        AlarmScheduler.scheduleHourlyAlarm(this, settings.bedTime, settings.wakeUpTime)
+                        AlarmScheduler.scheduleHourlyAlarm(this)
                     }
                 )
             }

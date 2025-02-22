@@ -4,12 +4,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.example.prijswijs.Alarms.AlarmScheduler
+import com.example.prijswijs.Notifications.EnergyNotificationService
 
 
 class BootReceiver : BroadcastReceiver() {
-
-  var persistence: Persistence? = null
-  var settings: Settings? = null
 
   override fun onReceive(context: Context, intent: Intent?) {
 
@@ -21,13 +20,8 @@ class BootReceiver : BroadcastReceiver() {
 
       Log.println(Log.INFO, "PrijsWijs", "BootReceiver triggered")
 
-      persistence = Persistence.getInstance(context)
-
-      // Load settings
-      settings = persistence!!.loadSettings(context)
-
       // Schedule hourly updates
-      AlarmScheduler.scheduleHourlyAlarm(context, settings!!.bedTime, settings!!.wakeUpTime)
+      AlarmScheduler.scheduleHourlyAlarm(context)
     }
   }
 }

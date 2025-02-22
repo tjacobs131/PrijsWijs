@@ -1,4 +1,4 @@
-package com.example.prijswijs
+package com.example.prijswijs.Persistence
 
 import android.content.Context
 

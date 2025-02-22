@@ -1,14 +1,12 @@
-package com.example.prijswijs
+package com.example.prijswijs.Alarms
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.example.prijswijs.Notifications.EnergyNotificationService
 
 class HourlyReceiver : BroadcastReceiver() {
-
-    var persistence: Persistence? = null
-    var settings: Settings? = null
 
     override fun onReceive(context: Context, intent: Intent) {
         // Start service to show notification
@@ -16,11 +14,7 @@ class HourlyReceiver : BroadcastReceiver() {
 
         Log.println(Log.INFO, "PrijsWijs", "HourlyReceiver triggered")
 
-        // Load settings
-        persistence = Persistence.getInstance(context)
-        settings = persistence!!.loadSettings(context)
-
         // Reschedule for next hour
-        AlarmScheduler.scheduleHourlyAlarm(context, settings!!.bedTime, settings!!.wakeUpTime)
+        AlarmScheduler.scheduleHourlyAlarm(context)
     }
 }

@@ -1,9 +1,8 @@
-package com.example.prijswijs
+package com.example.prijswijs.EnergyZeroAPI
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
-import org.json.JSONException
 import org.json.JSONObject
 import java.lang.Exception
 import java.net.HttpURLConnection
@@ -18,7 +17,7 @@ class EnergyPriceAPI {
     private companion object{
         lateinit var lastPrices: JSONArray
     }
-    suspend fun getTodaysEnergyPrices(): Triple<Map<Date, Double>, Double, Double> = withContext(Dispatchers.IO) {
+    suspend fun getTodaysEnergyPrices(): PriceData = withContext(Dispatchers.IO) {
         var prices: JSONArray? = null
 
         // Calculate time range in local time (Europe/Amsterdam)
@@ -66,10 +65,10 @@ class EnergyPriceAPI {
         return@withContext processPrices(prices) // Call extracted function to process prices, which can be null or lastPrices
     }
 
-    private fun processPrices(prices: JSONArray?): Triple<Map<Date, Double>, Double, Double> {
+    private fun processPrices(prices: JSONArray?): PriceData {
         val datesAndPrices = mutableMapOf<Date, Double>()
         if (prices == null || prices.length() == 0) {
-            return Triple(emptyMap(), 0.0, 0.0)
+            return PriceData(emptyMap(), 0.0, 0.0)
         }
 
         val amsterdamTZ = java.util.TimeZone.getTimeZone("Europe/Amsterdam")
@@ -114,7 +113,7 @@ class EnergyPriceAPI {
             if (candidatePeaks.isNotEmpty()) {
                 peak1 = candidatePeaks[0]
                 peak2 = candidatePeaks.drop(1).firstOrNull {
-                    kotlin.math.abs(it.key.time - peak1!!.key.time) >= minGap
+                    kotlin.math.abs(it.key.time - peak1.key.time) >= minGap
                 } ?: if (candidatePeaks.size > 1) candidatePeaks[1] else null
             }
         }
@@ -127,7 +126,7 @@ class EnergyPriceAPI {
             if (candidateTroughs.isNotEmpty()) {
                 trough1 = candidateTroughs[0]
                 trough2 = candidateTroughs.drop(1).firstOrNull {
-                    kotlin.math.abs(it.key.time - trough1!!.key.time) >= minGap
+                    kotlin.math.abs(it.key.time - trough1.key.time) >= minGap
                 } ?: if (candidateTroughs.size > 1) candidateTroughs[1] else null
             }
         }
@@ -174,7 +173,7 @@ class EnergyPriceAPI {
         val maxPrice = datesAndPrices.values.maxOrNull() ?: 0.0
         val minPrice = datesAndPrices.values.minOrNull() ?: 0.0
 
-        return Triple(sortedFinal.associate { it.key to it.value }, maxPrice, minPrice)
+        return PriceData(sortedFinal.associate { it.key to it.value }, maxPrice, minPrice)
     }
 
 

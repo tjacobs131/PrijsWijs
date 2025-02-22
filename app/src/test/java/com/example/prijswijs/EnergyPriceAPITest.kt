@@ -1,5 +1,7 @@
 package com.example.prijswijs
 
+import com.example.prijswijs.EnergyZeroAPI.EnergyPriceAPI
+import com.example.prijswijs.EnergyZeroAPI.PricesUnavailableException
 import io.mockk.*
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
@@ -94,7 +96,7 @@ class EnergyPriceAPITest {
     clearMocks(api)
     every { api["sendGet"](any<URL>()) } throws Exception("Simulated network error")
 
-    // Act & Assert: expect a com.example.prijswijs.PricesUnavailableException containing old prices.
+    // Act & Assert: expect a com.example.prijswijs.EnergyZeroAPI.PricesUnavailableException containing old prices.
     val exception = assertThrows<PricesUnavailableException> {
       runBlocking { api.getTodaysEnergyPrices() }
     }

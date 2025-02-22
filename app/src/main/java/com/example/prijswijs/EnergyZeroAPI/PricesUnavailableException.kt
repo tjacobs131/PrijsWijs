@@ -1,11 +1,11 @@
-package com.example.prijswijs
+package com.example.prijswijs.EnergyZeroAPI
 
-import java.util.Date
+import com.example.prijswijs.EnergyZeroAPI.PriceData
 
 class PricesUnavailableException: Exception() {
   // Custom exception for when prices are unavailable
   // Should be able to return old prices in this case
-  public lateinit var oldPrices: Triple<Map<Date, Double>, Double, Double>
+  public lateinit var oldPrices: PriceData
 
   override fun toString(): String {
     return "Prices are currently unavailable"
