@@ -1,5 +1,8 @@
 [versions]
 agp = "8.3.1"
+junitJupiter = "5.8.1"
+junitJupiterApi = "5.8.1"
+junitJupiterEngine = "5.8.1"
 kotlin = "1.9.0"
 coreKtx = "1.10.1"
 junit = "4.13.2"
@@ -9,6 +12,7 @@ lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.7.0"
 composeBom = "2023.08.00"
 firebaseCrashlyticsBuildtools = "2.9.9"
+mockkVersion = "1.12.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -26,6 +30,10 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junitJupiter" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junitJupiterApi" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junitJupiterEngine" }
+mockk-mockk = { module = "io.mockk:mockk", version.ref = "mockkVersion" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
