@@ -32,6 +32,7 @@ class EnergyNotificationService : Service() {
 
         startForeground(NOTIFICATION_ID, createProcessingNotification())
         showNotification()
+
         return START_NOT_STICKY
     }
 
@@ -69,7 +70,7 @@ class EnergyNotificationService : Service() {
                 try {
                     prices = EnergyPriceAPI().getTodaysEnergyPrices()
                 } catch (ex: PricesUnavailableException) {
-                    prices = ex.getOldPrices()
+                    prices = ex.oldPrices
                     warningMessage = ex.message.toString()
                 }
 
@@ -182,8 +183,7 @@ class EnergyNotificationService : Service() {
                 }
             }
 
-            // Check for day transition in first 10 entries
-            if (index > 0 && index <= 9) {
+            if (index > 0) {
                 val prevDate = keysList[index - 1]
                 if (isNewDay(prevDate, date)) {
                     val currentDate = Calendar.getInstance().apply { time = date }

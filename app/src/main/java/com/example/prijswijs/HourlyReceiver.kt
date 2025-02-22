@@ -12,7 +12,7 @@ class HourlyReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         // Start service to show notification
-        context.startService(Intent(context, EnergyNotificationService::class.java))
+        context.startForegroundService(Intent(context, EnergyNotificationService::class.java))
 
         Log.println(Log.INFO, "PrijsWijs", "HourlyReceiver triggered")
 
