@@ -1,6 +1,5 @@
 package com.example.prijswijs
 
-import EnergyPriceAPI
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -12,13 +11,11 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.base.Converter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
-import java.time.Clock
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
@@ -55,7 +52,6 @@ class EnergyNotificationService : Service() {
             lightColor = Color.GREEN
             enableVibration(true)
             vibrationPattern = longArrayOf(500, 200)
-
         }
 
         getSystemService(NotificationManager::class.java).apply {
@@ -67,11 +63,21 @@ class EnergyNotificationService : Service() {
     private fun showNotification() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val prices = EnergyPriceAPI().getTodaysEnergyPrices()
+                Log.d("PrijsWijs", "Fetching energy prices...") // Log before API call
+                lateinit var prices: Triple<Map<Date, Double>, Double, Double>
+                var warningMessage: String = ""
+                try {
+                    prices = EnergyPriceAPI().getTodaysEnergyPrices()
+                } catch (ex: PricesUnavailableException) {
+                    prices = ex.getOldPrices()
+                    warningMessage = ex.message.toString()
+                }
+
+                Log.d("PrijsWijs", "Prices fetched successfully.") // Log after successful API call
 
                 Log.println(Log.INFO, "PrijsWijs", "Prices fetched, generating message")
 
-                val message = generateHourlyNotificationMessage(prices)
+                val message = generateHourlyNotificationMessage(prices, warningMessage)
 
                 Log.println(Log.INFO, "PrijsWijs", "Showing message: $message")
 
@@ -81,13 +87,12 @@ class EnergyNotificationService : Service() {
 
                     Log.println(Log.INFO, "PrijsWijs", "Notification shown")
 
-                    // Check after 15 seconds if the notification is shown
+                    // Keep the 15-second check for now, but it's likely not the core issue.
                     Handler(Looper.getMainLooper()).postDelayed({
                         if ((getSystemService(NOTIFICATION_SERVICE) as NotificationManager).activeNotifications.none { it.id == FINAL_NOTIFICATION_ID }) {
-                            Log.println(Log.INFO, "PrijsWijs", "Notification not shown, retrying")
-                            showNotification()
+                            Log.println(Log.INFO, "PrijsWijs", "Notification not shown (after delay check), potentially an issue.")
                         } else {
-                            Log.println(Log.INFO, "PrijsWijs", "Notification shown")
+                            Log.println(Log.INFO, "PrijsWijs", "Notification shown and confirmed.")
                         }
                     }, 15000)
                 }
@@ -95,8 +100,13 @@ class EnergyNotificationService : Service() {
                 // Stop service after showing notification
                 stopSelf()
             } catch (e: Exception) {
-                android.util.Log.e("SERVICE_ERROR", "Notification failed", e)
+                Log.e("PrijsWijs", "Notification failed to show or data fetch error", e) // More detailed error log
 
+                val errorMessage = "⚠️ Failed to update prices. ⚠️\n${e.message}" // Error message for notification
+                withContext(Dispatchers.Main) { // Need to run notification display on main thread
+                    (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                        .notify(FINAL_NOTIFICATION_ID, buildFinalNotification(errorMessage, isError = true)) // Show error notification
+                }
                 stopSelf()
             }
         }
@@ -112,19 +122,26 @@ class EnergyNotificationService : Service() {
             .build()
     }
 
-    private fun buildFinalNotification(message: String): Notification {
-        return NotificationCompat.Builder(this, "energy_prices")
+    private fun buildFinalNotification(message: String, isError: Boolean = false): Notification {
+        val notificationBuilder = NotificationCompat.Builder(this, "energy_prices")
             .setSmallIcon(R.drawable.notification_icon)
-            .setContentTitle("⚡ Today's Energy Prices ⚡")
+            .setContentTitle(if (isError) "⚠️ Price Update Failed ⚠️" else "⚡ Today's Energy Prices ⚡") // Differentiate error title
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setSilent(!settings.vibrate)
-            //.setOngoing(true)
-            .build()
+
+        if (isError) {
+            notificationBuilder.priority = NotificationCompat.PRIORITY_HIGH // Ensure error is prominent
+        }
+
+        return notificationBuilder.build()
     }
 
-    private fun generateHourlyNotificationMessage(priceData: Triple<Map<Date, Double>, Double, Double>): String {
-        var returnString = ""
+    private fun generateHourlyNotificationMessage(priceData: Triple<Map<Date, Double>, Double, Double>, warningMessage: String): String {
+        var returnString: String = ""
+        if (warningMessage.isNotEmpty()) {
+            returnString = warningMessage
+        }
         val dateFormat = SimpleDateFormat("HH:mm", Locale.US)
 
         val peakPrice = priceData.second
