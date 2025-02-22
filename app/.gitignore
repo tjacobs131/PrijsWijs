@@ -1,6 +1,7 @@
 # Built application files
 /build/
 /app/build/
+/release/
 
 # Gradle files
 .gradle/
