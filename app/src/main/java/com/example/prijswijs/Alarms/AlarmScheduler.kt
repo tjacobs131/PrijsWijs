@@ -8,13 +8,9 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.widget.Toast
 import com.example.prijswijs.Persistence.Persistence
-import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 import android.provider.Settings as AndroidSettings
 
 object AlarmScheduler {

@@ -1,6 +1,6 @@
-package com.example.prijswijs.EnergyZeroAPI
+package com.example.prijswijs.EnergyPriceDataSource
 
-import com.example.prijswijs.EnergyZeroAPI.PriceData
+import com.example.prijswijs.Model.PriceData
 
 class PricesUnavailableException: Exception() {
   // Custom exception for when prices are unavailable

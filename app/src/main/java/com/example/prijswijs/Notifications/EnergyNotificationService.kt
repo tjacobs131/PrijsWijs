@@ -3,14 +3,16 @@ package com.example.prijswijs.Notifications
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import com.example.prijswijs.EnergyZeroAPI.EnergyPriceAPI
+import com.example.prijswijs.EnergyPriceDataSource.EnergyPriceAPI
 import com.example.prijswijs.Persistence.Persistence
-import com.example.prijswijs.EnergyZeroAPI.PriceData
-import com.example.prijswijs.EnergyZeroAPI.PricesUnavailableException
-import com.example.prijswijs.Persistence.Settings
+import com.example.prijswijs.Model.PriceData
+import com.example.prijswijs.EnergyPriceDataSource.PricesUnavailableException
+import com.example.prijswijs.Model.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -19,6 +21,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.ceil
+import kotlin.math.max
 
 class EnergyNotificationService : Service() {
     private val NOTIFICATION_ID = 1337420
@@ -83,31 +87,20 @@ class EnergyNotificationService : Service() {
         }
     }
 
-    private val wideDigits = setOf('0', '4', '6', '8', '9')
-    private val thinDigits = setOf('1', '2', '3', '5', '7')
-
-    // Calculate the “visual width” of a string (only considering digits and punctuation)
-    private fun calculateWidth(numberString: String): Int {
-        return numberString.sumOf { char ->
-            when (char) {
-                in wideDigits -> 2
-                in thinDigits -> 1
-                '.', ',' -> 1  // punctuation width (adjust if needed)
-                else -> 1       // fallback width
-            }.toInt()
-        }
-    }
-
-    // Returns a string of spaces needed to pad the numeric part to the target width,
+    // Returns a string of fixed-width figure spaces needed to pad the numeric part to the target pixel width,
 // then appends the given suffix.
-    private fun padSuffix(numberString: String, suffix: String, targetWidth: Int): String {
-        val currentWidth = calculateWidth(numberString)
-        val spacesNeeded = (targetWidth - currentWidth) / 2
-        return " ".repeat(spacesNeeded.coerceAtLeast(0)) + suffix
+    private fun padSuffix(
+        numberString: String,
+        suffix: String,
+    ): String {
+        val numOnes = numberString.count { it == '1' }
+        // For every two ones, add a figure space.
+        val figureSpaces = " ".repeat(max(0, ceil(numOnes / 2.0).toInt() - 1))
+        return figureSpaces + suffix
     }
 
     private fun generateHourlyNotificationMessage(priceData: PriceData, warningMessage: String): String {
-        var returnString = if (warningMessage.isNotEmpty()) warningMessage + "\n" else ""
+        var returnString = if (warningMessage.isNotEmpty()) "$warningMessage\n" else ""
         val dateFormat = SimpleDateFormat("HH:mm", Locale.US)
         val range = priceData.peakPrice - priceData.troughPrice
 
@@ -120,12 +113,17 @@ class EnergyNotificationService : Service() {
             23 to "\uD83C\uDF19"
         )
 
-        // Compute the maximum width of the numeric part among all prices.
-        // We format the price without the euro symbol for the measurement.
-        val maxWidth = priceData.priceTimeMap.values
-            .map { "%.2f".format(it) }
-            .map { calculateWidth(it) }
-            .maxOrNull() ?: 0
+        // Create a Paint object for text measurement using a monospaced font.
+        // Ensure that the textSize and typeface match those of the notification text.
+        val paint = Paint().apply {
+            textSize = 16f // set to your actual notification text size in pixels
+            typeface = Typeface.MONOSPACE // ensures fixed width digits
+        }
+
+        // Compute the maximum width (in pixels) of the numeric part among all prices.
+        val maxWidthPx = priceData.priceTimeMap.values
+            .map { price -> paint.measureText("%.2f".format(price)) }
+            .maxOrNull() ?: 0f
 
         val keysList = priceData.priceTimeMap.keys.toList()
 
@@ -161,13 +159,13 @@ class EnergyNotificationService : Service() {
                 }
             }
 
-            // Format the price and then align the suffix based on the numeric width.
+            // Format the price and then align the suffix based on the measured width.
             if (index == 0) {
                 // "Now" line
                 val formattedPrice = "€%.2f".format(price)
                 // Remove the euro symbol for measurement
                 val numberPart = formattedPrice.substring(1)
-                val alignedSuffix = padSuffix(numberPart, suffix, maxWidth)
+                val alignedSuffix = padSuffix(numberPart, suffix)
                 returnString += "\uD83D\uDCA1 |  Now   -  $formattedPrice$alignedSuffix\n"
             } else {
                 val formattedDate = dateFormat.format(date)
@@ -177,12 +175,13 @@ class EnergyNotificationService : Service() {
                 }
                 val formattedPrice = "€%.2f".format(price)
                 val numberPart = formattedPrice.substring(1)
-                val alignedSuffix = padSuffix(numberPart, suffix, maxWidth)
+                val alignedSuffix = padSuffix(numberPart, suffix)
                 returnString += dateTimeEmojiTable[hourValue] + " | $formattedDate  -  $formattedPrice$alignedSuffix\n"
             }
         }
         return returnString
     }
+
 
     private fun isNewDay(date1: Date, date2: Date): Boolean {
         val cal1 = Calendar.getInstance().apply { time = date1 }

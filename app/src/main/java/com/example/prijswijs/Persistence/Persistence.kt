@@ -1,6 +1,7 @@
 package com.example.prijswijs.Persistence
 
 import android.content.Context
+import com.example.prijswijs.Model.Settings
 
 class Persistence(context: Context) {
 

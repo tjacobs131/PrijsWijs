@@ -1,4 +1,4 @@
-package com.example.prijswijs.Persistence
+package com.example.prijswijs.Model
 
 class Settings {
   // Bed time - in hours (int)

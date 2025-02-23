@@ -47,7 +47,7 @@ import androidx.core.app.ActivityCompat
 import com.example.prijswijs.Alarms.AlarmScheduler
 import com.example.prijswijs.Notifications.EnergyNotificationService
 import com.example.prijswijs.Persistence.Persistence
-import com.example.prijswijs.Persistence.Settings
+import com.example.prijswijs.Model.Settings
 import com.example.prijswijs.ui.theme.PrijsWijsTheme
 import kotlinx.coroutines.launch
 

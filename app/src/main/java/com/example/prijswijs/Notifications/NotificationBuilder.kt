@@ -7,7 +7,7 @@ import android.content.Context
 import android.graphics.Color
 import androidx.core.app.NotificationCompat
 import com.example.prijswijs.R
-import com.example.prijswijs.Persistence.Settings
+import com.example.prijswijs.Model.Settings
 
 class NotificationBuilder(private val context: Context, private val settings: Settings) {
   private val notificationManager: NotificationManager =
