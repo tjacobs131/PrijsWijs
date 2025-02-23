@@ -83,8 +83,31 @@ class EnergyNotificationService : Service() {
         }
     }
 
+    private val wideDigits = setOf('0', '4', '6', '8', '9')
+    private val thinDigits = setOf('1', '2', '3', '5', '7')
+
+    // Calculate the “visual width” of a string (only considering digits and punctuation)
+    private fun calculateWidth(numberString: String): Int {
+        return numberString.sumOf { char ->
+            when (char) {
+                in wideDigits -> 2
+                in thinDigits -> 1
+                '.', ',' -> 1  // punctuation width (adjust if needed)
+                else -> 1       // fallback width
+            }.toInt()
+        }
+    }
+
+    // Returns a string of spaces needed to pad the numeric part to the target width,
+// then appends the given suffix.
+    private fun padSuffix(numberString: String, suffix: String, targetWidth: Int): String {
+        val currentWidth = calculateWidth(numberString)
+        val spacesNeeded = (targetWidth - currentWidth) / 2
+        return " ".repeat(spacesNeeded.coerceAtLeast(0)) + suffix
+    }
+
     private fun generateHourlyNotificationMessage(priceData: PriceData, warningMessage: String): String {
-        var returnString = if (warningMessage.isNotEmpty()) warningMessage else ""
+        var returnString = if (warningMessage.isNotEmpty()) warningMessage + "\n" else ""
         val dateFormat = SimpleDateFormat("HH:mm", Locale.US)
         val range = priceData.peakPrice - priceData.troughPrice
 
@@ -97,6 +120,13 @@ class EnergyNotificationService : Service() {
             23 to "\uD83C\uDF19"
         )
 
+        // Compute the maximum width of the numeric part among all prices.
+        // We format the price without the euro symbol for the measurement.
+        val maxWidth = priceData.priceTimeMap.values
+            .map { "%.2f".format(it) }
+            .map { calculateWidth(it) }
+            .maxOrNull() ?: 0
+
         val keysList = priceData.priceTimeMap.keys.toList()
 
         priceData.priceTimeMap.entries.forEachIndexed { index, entry ->
@@ -104,8 +134,8 @@ class EnergyNotificationService : Service() {
             val price = entry.value
             var suffix = ""
 
+            // Determine suffix based on dynamic thresholds
             if (range > 0) {
-                // Dynamic thresholds based on the range
                 val peakThreshold1 = priceData.peakPrice - 0.1 * range
                 val peakThreshold2 = priceData.peakPrice - 0.4 * range
                 val troughThreshold1 = priceData.troughPrice + 0.1 * range
@@ -122,6 +152,7 @@ class EnergyNotificationService : Service() {
                 }
             }
 
+            // Add a header line when a new day is detected.
             if (index > 0) {
                 val prevDate = keysList[index - 1]
                 if (isNewDay(prevDate, date)) {
@@ -130,15 +161,24 @@ class EnergyNotificationService : Service() {
                 }
             }
 
+            // Format the price and then align the suffix based on the numeric width.
             if (index == 0) {
-                returnString += "\uD83D\uDCA1 |  Now   -  €%.2f".format(price) + suffix + "\n"
+                // "Now" line
+                val formattedPrice = "€%.2f".format(price)
+                // Remove the euro symbol for measurement
+                val numberPart = formattedPrice.substring(1)
+                val alignedSuffix = padSuffix(numberPart, suffix, maxWidth)
+                returnString += "\uD83D\uDCA1 |  Now   -  $formattedPrice$alignedSuffix\n"
             } else {
                 val formattedDate = dateFormat.format(date)
                 var hourValue = formattedDate.split(":")[0].toInt()
                 while (!dateTimeEmojiTable.containsKey(hourValue)) {
                     hourValue = (hourValue + 1) % 24
                 }
-                returnString += dateTimeEmojiTable[hourValue] + " | $formattedDate  -  €%.2f".format(price) + suffix + "\n"
+                val formattedPrice = "€%.2f".format(price)
+                val numberPart = formattedPrice.substring(1)
+                val alignedSuffix = padSuffix(numberPart, suffix, maxWidth)
+                returnString += dateTimeEmojiTable[hourValue] + " | $formattedDate  -  $formattedPrice$alignedSuffix\n"
             }
         }
         return returnString
@@ -150,6 +190,7 @@ class EnergyNotificationService : Service() {
         return cal1.get(Calendar.DAY_OF_YEAR) != cal2.get(Calendar.DAY_OF_YEAR) ||
                 cal1.get(Calendar.YEAR) != cal2.get(Calendar.YEAR)
     }
+
 
     override fun onBind(intent: Intent?) = null
 }

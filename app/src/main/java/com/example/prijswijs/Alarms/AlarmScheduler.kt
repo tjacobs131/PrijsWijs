@@ -8,9 +8,13 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import com.example.prijswijs.Persistence.Persistence
+import java.text.SimpleDateFormat
 import java.time.LocalDateTime
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import android.provider.Settings as AndroidSettings
 
 object AlarmScheduler {
@@ -18,19 +22,17 @@ object AlarmScheduler {
         val alarmManager = context.getSystemService(AlarmManager::class.java)
         val settings = Persistence(context).loadSettings(context)
 
-        // Check if exact alarms are allowed (Android 12+)
+        // Check exact alarm permission (Android 12+)
         if (!alarmManager.canScheduleExactAlarms()) {
-            // Launch permission request activity
             val intent = Intent().apply {
                 action = AndroidSettings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
                 data = Uri.parse("package:${context.packageName}")
             }
             context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 
-            Handler.createAsync(Looper.getMainLooper()).postDelayed({
+            Handler(Looper.getMainLooper()).postDelayed({
                 scheduleHourlyAlarm(context)
             }, 5000)
-
             return
         }
 
@@ -44,29 +46,47 @@ object AlarmScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Check if we are past bedtime
         val currentTime = LocalDateTime.now()
-        if (currentTime.hour >= settings.bedTime) { // Set alarm for next day
-            // Calculate time for next day
+        val bedTimeHour = settings.bedTime
+        val wakeUpHour = settings.wakeUpTime
+        val currentHour = currentTime.hour
+
+        // Determine if current time is within bedtime window
+        val isPastBedtime = if (bedTimeHour < wakeUpHour) {
+            currentHour in bedTimeHour..<wakeUpHour
+        } else {
+            currentHour >= bedTimeHour || currentHour < wakeUpHour
+        }
+
+        Log.println(Log.INFO, "PrijsWijs", "Current time: $currentTime, Bedtime: $bedTimeHour, Wakeup: $wakeUpHour")
+
+        if (isPastBedtime) {
+            // Schedule next alarm at wake-up time
             val calendar = Calendar.getInstance().apply {
                 timeInMillis = System.currentTimeMillis()
-                add(Calendar.DAY_OF_MONTH, 1)
-                set(Calendar.HOUR_OF_DAY, settings.wakeUpTime)
+                // Add day if bedtime is today but wake-up is tomorrow
+                if (bedTimeHour in wakeUpHour..currentHour) {
+                    add(Calendar.DAY_OF_MONTH, 1)
+                }
+                set(Calendar.HOUR_OF_DAY, wakeUpHour)
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 10)
                 set(Calendar.MILLISECOND, 0)
             }
+            // Ensure wake-up is not in the past (if called right at wake-up hour)
+            if (calendar.timeInMillis <= System.currentTimeMillis()) {
+                calendar.add(Calendar.DAY_OF_MONTH, 1)
+            }
 
-            Log.println(Log.INFO, "PrijsWijs", "Time to next alarm: ${calendar.time} / ${calendar.timeInMillis}")
+            Log.println(Log.INFO, "PrijsWijs", "Scheduling at wake-up: ${calendar.time}")
 
-            alarmManager.canScheduleExactAlarms()
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 calendar.timeInMillis,
                 pendingIntent
             )
-        } else { // Set alarm for next hour
-            // Calculate exact time for next hour transition
+        } else {
+            // Schedule at next hour
             val calendar = Calendar.getInstance().apply {
                 timeInMillis = System.currentTimeMillis()
                 add(Calendar.HOUR, 1)
@@ -75,9 +95,8 @@ object AlarmScheduler {
                 set(Calendar.MILLISECOND, 0)
             }
 
-            Log.println(Log.INFO, "PrijsWijs", "Time to next alarm: ${calendar.time} / ${calendar.timeInMillis}")
+            Log.println(Log.INFO, "PrijsWijs", "Scheduling next hour: ${calendar.time}")
 
-            alarmManager.canScheduleExactAlarms()
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 calendar.timeInMillis,
