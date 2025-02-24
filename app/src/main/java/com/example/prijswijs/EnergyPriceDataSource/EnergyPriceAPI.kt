@@ -15,7 +15,14 @@ import kotlin.math.pow
 
 class EnergyPriceAPI {
     private companion object {
-        lateinit var cachedPrices: JSONArray
+        var cachedPrices: JSONArray? = null
+    }
+
+    fun getCachedPrices(): PriceData {
+        if (cachedPrices == null || cachedPrices!!.length() == 0) {
+            throw CachedPricesUnavailableException("No cached prices available.")
+        }
+        return processPrices(cachedPrices)
     }
 
     suspend fun getTodaysEnergyPrices(): PriceData = withContext(Dispatchers.IO) {
@@ -27,7 +34,7 @@ class EnergyPriceAPI {
         val localStartTime = calendar.time
 
         calendar.time = Date()
-        calendar.add(Calendar.HOUR_OF_DAY, 20)
+        calendar.add(Calendar.HOUR_OF_DAY, 32)
         val localEndTime = calendar.time
 
         val utcDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.000'Z'", Locale.US).apply {
@@ -38,7 +45,7 @@ class EnergyPriceAPI {
 
         val url = createUrl(utcStartDate, utcEndDate)
         var prices: JSONArray? = null
-        var retryCountdown = 3
+        var retryCountdown = 2
 
         while (retryCountdown > 0) {
             try {
@@ -48,9 +55,7 @@ class EnergyPriceAPI {
                 break
             } catch (ex: Exception) {
                 if (--retryCountdown == 0) {
-                    val exception = PricesUnavailableException()
-                    exception.oldPrices = processPrices(cachedPrices)
-                    throw exception
+                    throw PricesUnavailableException("No cached prices available.")
                 }
             }
         }
