@@ -8,6 +8,7 @@ import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.example.prijswijs.EnergyPriceDataSource.CachedPricesUnavailableException
 import com.example.prijswijs.EnergyPriceDataSource.EnergyPriceAPI
 import com.example.prijswijs.Persistence.Persistence
 import com.example.prijswijs.Model.PriceData
@@ -45,16 +46,25 @@ class EnergyNotificationService : Service() {
             try {
                 Log.d("PrijsWijs", "Fetching energy prices...")
                 lateinit var prices: PriceData
-                var warningMessage = ""
                 try {
                     prices = EnergyPriceAPI().getTodaysEnergyPrices()
-                } catch (ex: PricesUnavailableException) {
-                    prices = ex.oldPrices
-                    warningMessage = ex.message.toString()
+                } catch (pricesEx: PricesUnavailableException) {
+                    try {
+                        prices = EnergyPriceAPI().getCachedPrices()
+                    } catch (cacheEx: CachedPricesUnavailableException) {
+                        Log.e("PrijsWijs", "Failed to fetch prices", cacheEx)
+                        val errorMessage = "Error: " + cacheEx.message
+                        withContext(Dispatchers.Main) {
+                            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                                .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(errorMessage, isError = true))
+                        }
+                        stopSelf()
+                        while (true) { }
+                    }
                 }
 
                 Log.d("PrijsWijs", "Prices fetched successfully.")
-                val message = generateHourlyNotificationMessage(prices, warningMessage)
+                val message = generateHourlyNotificationMessage(prices)
                 Log.d("PrijsWijs", "Showing message: $message")
 
                 withContext(Dispatchers.Main) {
@@ -70,14 +80,14 @@ class EnergyNotificationService : Service() {
                         } else {
                             Log.d("PrijsWijs", "Notification shown and confirmed.")
                         }
-                    }, 15000)
+                    }, 5000)
                 }
 
                 // Stop service after showing the notification
                 stopSelf()
             } catch (e: Exception) {
-                Log.e("PrijsWijs", "Notification failed to show or data fetch error", e)
-                val errorMessage = "⚠️ Failed to update prices. ⚠️\n${e.message}"
+                Log.e("PrijsWijs", "Notification failed to show", e)
+                val errorMessage = "Error: Notification failed to show"
                 withContext(Dispatchers.Main) {
                     (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
                         .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(errorMessage, isError = true))
@@ -93,14 +103,19 @@ class EnergyNotificationService : Service() {
         numberString: String,
         suffix: String,
     ): String {
-        val numOnes = numberString.count { it == '1' }
-        // For every two ones, add a figure space.
-        val figureSpaces = " ".repeat(max(0, ceil(numOnes / 2.0).toInt() - 1))
-        return figureSpaces + suffix
+        if (numberString.count { it == '1' } == 2) {
+            return " $suffix"
+        } else if (numberString.count { it == '1'} == 3 && suffix.contains("❗")) {
+            return " $suffix"
+        } else if (numberString.count { it == '1' } == 4) {
+            return "  $suffix"
+        }
+
+        return "$suffix"
     }
 
-    private fun generateHourlyNotificationMessage(priceData: PriceData, warningMessage: String): String {
-        var returnString = if (warningMessage.isNotEmpty()) "$warningMessage\n" else ""
+    private fun generateHourlyNotificationMessage(priceData: PriceData): String {
+        var returnString = ""
         val dateFormat = SimpleDateFormat("HH:mm", Locale.US)
         val range = priceData.peakPrice - priceData.troughPrice
 
