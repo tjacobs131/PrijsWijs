@@ -49,7 +49,7 @@ object AlarmScheduler {
 
         // Determine if current time is within bedtime window
         val isPastBedtime = if (bedTimeHour < wakeUpHour) {
-            currentHour in bedTimeHour..<wakeUpHour
+            currentHour in bedTimeHour until wakeUpHour
         } else {
             currentHour >= bedTimeHour || currentHour < wakeUpHour
         }
@@ -66,7 +66,7 @@ object AlarmScheduler {
                 }
                 set(Calendar.HOUR_OF_DAY, wakeUpHour)
                 set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 10)
+                set(Calendar.SECOND, 5)
                 set(Calendar.MILLISECOND, 0)
             }
             // Ensure wake-up is not in the past (if called right at wake-up hour)
