@@ -1,7 +1,6 @@
 package com.example.prijswijs
 
 import com.example.prijswijs.EnergyPriceDataSource.EnergyPriceAPI
-import com.example.prijswijs.EnergyPriceDataSource.PricesUnavailableException
 import com.example.prijswijs.Model.PriceData
 import io.mockk.*
 import kotlinx.coroutines.runBlocking

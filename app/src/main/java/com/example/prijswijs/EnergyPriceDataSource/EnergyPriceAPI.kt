@@ -18,13 +18,6 @@ class EnergyPriceAPI {
         var cachedPrices: JSONArray? = null
     }
 
-    fun getCachedPrices(): PriceData {
-        if (cachedPrices == null || cachedPrices!!.length() == 0) {
-            throw CachedPricesUnavailableException("No cached prices available.")
-        }
-        return processPrices(cachedPrices)
-    }
-
     suspend fun getTodaysEnergyPrices(): PriceData = withContext(Dispatchers.IO) {
         val amsterdamTZ = java.util.TimeZone.getTimeZone("Europe/Amsterdam")
         val calendar = Calendar.getInstance(amsterdamTZ).apply {
@@ -54,8 +47,9 @@ class EnergyPriceAPI {
                 cachedPrices = prices
                 break
             } catch (ex: Exception) {
-                if (--retryCountdown == 0) {
-                    throw PricesUnavailableException("No cached prices available.")
+                retryCountdown--
+                if (retryCountdown == 0) {
+                    return@withContext processPrices(cachedPrices)
                 }
             }
         }

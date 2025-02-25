@@ -12,7 +12,6 @@ import com.example.prijswijs.EnergyPriceDataSource.CachedPricesUnavailableExcept
 import com.example.prijswijs.EnergyPriceDataSource.EnergyPriceAPI
 import com.example.prijswijs.Persistence.Persistence
 import com.example.prijswijs.Model.PriceData
-import com.example.prijswijs.EnergyPriceDataSource.PricesUnavailableException
 import com.example.prijswijs.Model.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,8 +21,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlin.math.ceil
-import kotlin.math.max
 
 class EnergyNotificationService : Service() {
     private val NOTIFICATION_ID = 1337420
@@ -48,19 +45,14 @@ class EnergyNotificationService : Service() {
                 lateinit var prices: PriceData
                 try {
                     prices = EnergyPriceAPI().getTodaysEnergyPrices()
-                } catch (pricesEx: PricesUnavailableException) {
-                    try {
-                        prices = EnergyPriceAPI().getCachedPrices()
-                    } catch (cacheEx: CachedPricesUnavailableException) {
-                        Log.e("PrijsWijs", "Failed to fetch prices", cacheEx)
-                        val errorMessage = "Error: " + cacheEx.message
-                        withContext(Dispatchers.Main) {
-                            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-                                .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(errorMessage, isError = true))
-                        }
-                        stopSelf()
-                        while (true) { }
+                } catch (cacheEx: CachedPricesUnavailableException) {
+                    Log.e("PrijsWijs", "Failed to fetch prices", cacheEx)
+                    val errorMessage = "Error: " + cacheEx.message
+                    withContext(Dispatchers.Main) {
+                        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                            .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(errorMessage, isError = true))
                     }
+                    stopSelf()
                 }
 
                 Log.d("PrijsWijs", "Prices fetched successfully.")
