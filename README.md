@@ -10,4 +10,4 @@
 </l>
 
 # Installatie
-<p>Download PrijsWijs.apk onder het kopje 'Releases' op deze pagina. Open het bestand zodra gedownload.</p>
+<p>Download PrijsWijs.apk onder het kopje 'Releases' op deze pagina. Open het bestand wanneer het klaar is met downloaden.</p>
