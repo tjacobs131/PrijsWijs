@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
     private var bedTimeHour by mutableIntStateOf(21)  // 21h
     private var wakeTimeHour by mutableIntStateOf(6)  // 6h
 
-    private val persistence = Persistence.getInstance(this)
+    private val persistence = Persistence.getInstance()
     private lateinit var settings: Settings
 
     override fun onCreate(savedInstanceState: Bundle?) {

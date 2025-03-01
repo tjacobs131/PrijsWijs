@@ -1,10 +1,14 @@
 package com.example.prijswijs.EnergyPriceDataSource
 
+import android.content.Context
+import android.util.Log
 import com.example.prijswijs.Model.PriceData
+import com.example.prijswijs.Persistence.Persistence
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
@@ -14,11 +18,7 @@ import java.util.Locale
 import kotlin.math.pow
 
 class EnergyPriceAPI {
-    private companion object {
-        var cachedPrices: JSONArray? = null
-    }
-
-    suspend fun getTodaysEnergyPrices(): PriceData = withContext(Dispatchers.IO) {
+    suspend fun getTodaysEnergyPrices(context: Context): PriceData = withContext(Dispatchers.IO) {
         val amsterdamTZ = java.util.TimeZone.getTimeZone("Europe/Amsterdam")
         val calendar = Calendar.getInstance(amsterdamTZ).apply {
             time = Date()
@@ -36,25 +36,30 @@ class EnergyPriceAPI {
         val utcStartDate = utcDateFormat.format(localStartTime)
         val utcEndDate = utcDateFormat.format(localEndTime)
 
+        val persistence = Persistence()
+
+
+
         val url = createUrl(utcStartDate, utcEndDate)
-        var prices: JSONArray? = null
+        var prices: PriceData? = null
         var retryCountdown = 2
 
         while (retryCountdown > 0) {
             try {
                 val response = sendGet(url)
-                prices = JSONObject(response).getJSONArray("Prices")
-                cachedPrices = prices
+                prices = processPrices(JSONObject(response).getJSONArray("Prices"))
                 break
-            } catch (ex: Exception) {
+            } catch (ex: IOException) {
                 retryCountdown--
                 if (retryCountdown == 0) {
-                    return@withContext processPrices(cachedPrices)
+                    prices = persistence.loadCachedPrices(context) // Take from previously cached prices
+                    break
                 }
             }
         }
-
-        return@withContext processPrices(prices)
+        
+        persistence.saveCachedPrices(context, prices!!)
+        return@withContext prices
     }
 
     private fun processPrices(prices: JSONArray?): PriceData {

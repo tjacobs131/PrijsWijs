@@ -1,16 +1,20 @@
 package com.example.prijswijs.Persistence
 
 import android.content.Context
+import android.util.Log
+import com.example.prijswijs.Model.PriceData
 import com.example.prijswijs.Model.Settings
+import java.lang.ClassCastException
+import java.util.Date
 
-class Persistence(context: Context) {
+class Persistence() {
 
   companion object {
     private var instance: Persistence? = null
 
-    fun getInstance(context: Context): Persistence {
+    fun getInstance(): Persistence {
       if (instance == null) {
-        instance = Persistence(context)
+        instance = Persistence()
       }
       return instance!!
     }
@@ -38,5 +42,44 @@ class Persistence(context: Context) {
     return settings
   }
 
+  fun saveCachedPrices(context: Context, priceData: PriceData){
+    val editor = context.getSharedPreferences("cachedPrices", Context.MODE_PRIVATE).edit()
+
+    editor.putFloat("peakPrice", priceData.peakPrice.toFloat())
+    editor.putFloat("troughPrice", priceData.troughPrice.toFloat())
+
+    val dates = priceData.priceTimeMap.keys
+    for ((index, date) in dates.withIndex()){
+      editor.putLong("date$index", date.time)
+    }
+
+    val prices = priceData.priceTimeMap.values
+    for ((index, price) in prices.withIndex()){
+      editor.putFloat("price$index", price.toFloat())
+    }
+
+    editor.apply()
+  }
+
+  fun loadCachedPrices(context: Context): PriceData{
+    val sharedPreferences = context.getSharedPreferences("cachedPrices", Context.MODE_PRIVATE)
+
+    val peakPrice = sharedPreferences.getFloat("peakPrice", 0.0F).toDouble()
+    val troughPrice = sharedPreferences.getFloat("troughPrice", 0.0F).toDouble()
+
+    val priceMap = mutableMapOf<Date, Double>()
+    var index = 0
+    while (true){
+      val price = sharedPreferences.getFloat("price$index", -9999.0F)
+      val date = Date(sharedPreferences.getLong("date$index", -9999))
+      if (price == -9999.0F || date.time.toInt() == -9999){
+        break
+      }
+      priceMap[date] = price.toDouble()
+      index++
+    }
+
+    return PriceData(priceMap, peakPrice, troughPrice)
+  }
 
 }

@@ -2,6 +2,7 @@ package com.example.prijswijs.Notifications
 
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.graphics.Paint
 import android.graphics.Typeface
@@ -26,7 +27,7 @@ class EnergyNotificationService : Service() {
     private val NOTIFICATION_ID = 1337420
     private val FINAL_NOTIFICATION_ID = 1338
 
-    private val persistence: Persistence by lazy { Persistence(this) }
+    private val persistence: Persistence by lazy { Persistence() }
     private val settings: Settings by lazy { persistence.loadSettings(this) }
     private val notificationBuilder by lazy { NotificationBuilder(this, settings) }
 
@@ -34,17 +35,17 @@ class EnergyNotificationService : Service() {
         // Create channels and start service in foreground with a processing notification.
         notificationBuilder.createNotificationChannels()
         startForeground(NOTIFICATION_ID, notificationBuilder.buildProcessingNotification())
-        showNotification()
+        showNotification(this)
         return START_NOT_STICKY
     }
 
-    private fun showNotification() {
+    private fun showNotification(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 Log.d("PrijsWijs", "Fetching energy prices...")
                 lateinit var prices: PriceData
                 try {
-                    prices = EnergyPriceAPI().getTodaysEnergyPrices()
+                    prices = EnergyPriceAPI().getTodaysEnergyPrices(context)
                 } catch (cacheEx: CachedPricesUnavailableException) {
                     Log.e("PrijsWijs", "Failed to fetch prices", cacheEx)
                     val errorMessage = "Error: " + cacheEx.message
@@ -103,7 +104,7 @@ class EnergyNotificationService : Service() {
             return "  $suffix"
         }
 
-        return "$suffix"
+        return suffix
     }
 
     private fun generateHourlyNotificationMessage(priceData: PriceData): String {
@@ -146,14 +147,14 @@ class EnergyNotificationService : Service() {
                 val troughThreshold1 = priceData.troughPrice + 0.1 * range
                 val troughThreshold2 = priceData.troughPrice + 0.3 * range
 
-                when {
-                    price == priceData.priceTimeMap.values.min() -> suffix = "⭐"
-                    range < 0.06 -> suffix = ""
-                    price > peakThreshold1 && range > 0.15 -> suffix = "‼\uFE0F"
-                    price == priceData.priceTimeMap.values.max() || price > peakThreshold2 -> suffix = "❗"
-                    price < troughThreshold1 -> suffix = "⭐"
-                    price < troughThreshold2 && range > 0.10 -> suffix = "🌱"
-                    else -> suffix = ""
+                suffix = when {
+                    price == priceData.priceTimeMap.values.min() -> "⭐"
+                    range < 0.06 -> ""
+                    price > peakThreshold1 && range > 0.15 -> "‼\uFE0F"
+                    price == priceData.priceTimeMap.values.max() || price > peakThreshold2 -> "❗"
+                    price < troughThreshold1 -> "⭐"
+                    price < troughThreshold2 && range > 0.10 -> "🌱"
+                    else -> ""
                 }
             }
 

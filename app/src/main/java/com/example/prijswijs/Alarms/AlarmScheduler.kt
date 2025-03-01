@@ -16,7 +16,7 @@ import android.provider.Settings as AndroidSettings
 object AlarmScheduler {
     fun scheduleHourlyAlarm(context: Context) {
         val alarmManager = context.getSystemService(AlarmManager::class.java)
-        val settings = Persistence(context).loadSettings(context)
+        val settings = Persistence().loadSettings(context)
 
         // Check exact alarm permission (Android 12+)
         if (!alarmManager.canScheduleExactAlarms()) {
@@ -42,10 +42,10 @@ object AlarmScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val currentTime = LocalDateTime.now()
+        val calendar = Calendar.getInstance()
         val bedTimeHour = settings.bedTime
         val wakeUpHour = settings.wakeUpTime
-        val currentHour = currentTime.hour
+        val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
 
         // Determine if current time is within bedtime window
         val isPastBedtime = if (bedTimeHour < wakeUpHour) {
@@ -54,7 +54,7 @@ object AlarmScheduler {
             currentHour >= bedTimeHour || currentHour < wakeUpHour
         }
 
-        Log.println(Log.INFO, "PrijsWijs", "Current time: $currentTime, Bedtime: $bedTimeHour, Wakeup: $wakeUpHour")
+        Log.println(Log.INFO, "PrijsWijs", "Current time: ${calendar.get(Calendar.HOUR_OF_DAY)}, Bedtime: $bedTimeHour, Wakeup: $wakeUpHour")
 
         if (isPastBedtime) {
             // Schedule next alarm at wake-up time
