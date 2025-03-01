@@ -10,7 +10,7 @@
 </l>
 
 # Voorbeeld van een notificatie
-
+⚡ Today's Energy Prices ⚡<br>
 &emsp;💡 |  Now   -  €0,16❗<br>
 &ensp;🌙 | 22:00  -  €0,15❗<br>
 &ensp;🌙 | 23:00  -  €0,15❗<br>
