@@ -1,7 +1,6 @@
 package com.example.prijswijs.EnergyPriceDataSource
 
 import android.content.Context
-import android.util.Log
 import com.example.prijswijs.Model.PriceData
 import com.example.prijswijs.Persistence.Persistence
 import kotlinx.coroutines.Dispatchers
@@ -38,8 +37,6 @@ class EnergyPriceAPI {
 
         val persistence = Persistence()
 
-
-
         val url = createUrl(utcStartDate, utcEndDate)
         var prices: PriceData? = null
         var retryCountdown = 2
@@ -64,7 +61,7 @@ class EnergyPriceAPI {
 
     private fun processPrices(prices: JSONArray?): PriceData {
         if (prices == null || prices.length() == 0) {
-            return PriceData(emptyMap(), 0.0, 0.0)
+            return PriceData(null, 0.0, 0.0)
         }
 
         val amsterdamTZ = java.util.TimeZone.getTimeZone("Europe/Amsterdam")
@@ -117,7 +114,7 @@ class EnergyPriceAPI {
         val maxPrice = datesAndPrices.values.maxOrNull() ?: 0.0
         val minPrice = datesAndPrices.values.minOrNull() ?: 0.0
 
-        return PriceData(sortedFinal.associate { it.key to it.value }, maxPrice, minPrice)
+        return PriceData(sortedFinal.associate { it.key to it.value }.toMutableMap(), maxPrice, minPrice)
     }
 
     private fun getPeaksAndTroughs(sortedEntries: List<Map.Entry<Date, Double>>): MutableSet<Map.Entry<Date, Double>> {

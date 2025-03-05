@@ -1,10 +1,8 @@
 package com.example.prijswijs.Persistence
 
 import android.content.Context
-import android.util.Log
 import com.example.prijswijs.Model.PriceData
 import com.example.prijswijs.Model.Settings
-import java.lang.ClassCastException
 import java.util.Date
 
 class Persistence() {
@@ -48,7 +46,7 @@ class Persistence() {
     editor.putFloat("peakPrice", priceData.peakPrice.toFloat())
     editor.putFloat("troughPrice", priceData.troughPrice.toFloat())
 
-    val dates = priceData.priceTimeMap.keys
+    val dates = priceData.priceTimeMap!!.keys
     for ((index, date) in dates.withIndex()){
       editor.putLong("date$index", date.time)
     }

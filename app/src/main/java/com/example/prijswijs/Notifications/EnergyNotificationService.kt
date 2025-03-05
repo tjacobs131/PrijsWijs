@@ -129,7 +129,7 @@ class EnergyNotificationService : Service() {
         }
 
         // Compute the maximum width (in pixels) of the numeric part among all prices.
-        val maxWidthPx = priceData.priceTimeMap.values
+        val maxWidthPx = priceData.priceTimeMap!!.values
             .map { price -> paint.measureText("%.2f".format(price)) }
             .maxOrNull() ?: 0f
 
