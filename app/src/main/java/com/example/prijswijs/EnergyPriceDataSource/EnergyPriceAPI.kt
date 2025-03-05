@@ -49,7 +49,7 @@ class EnergyPriceAPI {
             } catch (ex: IOException) {
                 retryCountdown--
                 if (retryCountdown == 0) {
-                    prices = persistence.loadCachedPrices(context) // Take from previously cached prices
+                    prices = persistence.loadCachedPrices(context).filterMapTimes() // Take from previously cached prices
                     break
                 }
             }
