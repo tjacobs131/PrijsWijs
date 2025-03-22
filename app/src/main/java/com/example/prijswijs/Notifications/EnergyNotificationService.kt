@@ -72,12 +72,13 @@ class EnergyNotificationService : Service() {
                             Log.d("PrijsWijs", "Notification not shown (after delay check), potentially an issue.")
                         } else {
                             Log.d("PrijsWijs", "Notification shown and confirmed.")
+                            // Stop service after showing the notification
+                            stopSelf()
                         }
                     }, 5000)
                 }
 
-                // Stop service after showing the notification
-                stopSelf()
+
             } catch (e: Exception) {
                 Log.e("PrijsWijs", "Notification failed to show", e)
                 val errorMessage = "Error: Notification failed to show"
