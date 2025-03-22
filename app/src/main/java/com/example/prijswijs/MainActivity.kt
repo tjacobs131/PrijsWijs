@@ -151,7 +151,7 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxWidth()
                         ) {
                             Text(
-                                text = "Vibrate Hourly",
+                                text = "Vibrate When\nPrice Changes",
                                 style = MaterialTheme.typography.titleMedium.copy(color = textColorPrimary),
                                 modifier = Modifier.weight(1f)
                             )

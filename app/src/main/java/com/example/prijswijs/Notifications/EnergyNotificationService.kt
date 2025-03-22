@@ -179,7 +179,6 @@ class EnergyNotificationService : Service() {
                 }
                 val formattedPrice = "€%.2f".format(price)
                 val numberPart = formattedPrice.substring(1)
-                val alignedSuffix = padSuffixWithTabs(paint, numberPart, suffix, 60.0f)
                 returnString += dateTimeEmojiTable[hourValue] + " | $formattedDate  -  $formattedPrice\t$suffix\n"
             }
         }
