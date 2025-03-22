@@ -22,6 +22,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.floor
 
 class EnergyNotificationService : Service() {
     private val NOTIFICATION_ID = 1337420
@@ -93,19 +94,21 @@ class EnergyNotificationService : Service() {
 
     // Returns a string of fixed-width figure spaces needed to pad the numeric part to the target pixel width,
     // then appends the given suffix.
-    private fun padSuffix(
-        numberString: String,
+    private fun padSuffixWithTabs(
+        paint: Paint,
+        numberPart: String,
         suffix: String,
+        maxWidth: Float
     ): String {
-        if (numberString.count { it == '1' } == 2) {
-            return " $suffix"
-        } else if (numberString.count { it == '1'} == 3 && suffix.contains("❗")) {
-            return " $suffix"
-        } else if (numberString.count { it == '1' } == 4) {
-            return "  $suffix"
+        val tabWidth = paint.measureText("\t")
+        val currentWidth = paint.measureText(numberPart)
+        val missingWidth = maxWidth - currentWidth
+        var tabsNeeded = (missingWidth / tabWidth).toInt()
+        // If there are many ones, subtract one tab to compensate
+        if (numberPart.count { it == '1' } >= 3 && tabsNeeded > 0) {
+            tabsNeeded--
         }
-
-        return suffix
+        return "\t".repeat(1) + suffix
     }
 
     private fun generateHourlyNotificationMessage(priceData: PriceData): String {
@@ -122,19 +125,7 @@ class EnergyNotificationService : Service() {
             23 to "\uD83C\uDF19"
         )
 
-        // Create a Paint object for text measurement using a monospaced font.
-        // Ensure that the textSize and typeface match those of the notification text.
-        val paint = Paint().apply {
-            textSize = 16f // set to your actual notification text size in pixels
-            typeface = Typeface.MONOSPACE // ensures fixed width digits
-        }
-
-        // Compute the maximum width (in pixels) of the numeric part among all prices.
-        val maxWidthPx = priceData.priceTimeMap!!.values
-            .map { price -> paint.measureText("%.2f".format(price)) }
-            .maxOrNull() ?: 0f
-
-        val keysList = priceData.priceTimeMap.keys.toList()
+        val keysList = priceData.priceTimeMap!!.keys.toList()
 
         priceData.priceTimeMap.entries.forEachIndexed { index, entry ->
             val date = entry.key
@@ -174,17 +165,22 @@ class EnergyNotificationService : Service() {
                 val formattedPrice = "€%.2f".format(price)
                 // Remove the euro symbol for measurement
                 val numberPart = formattedPrice.substring(1)
-                returnString += "\uD83D\uDCA1 |  Now   -  $formattedPrice$suffix\n"
+                returnString += "\uD83D\uDCA1 |  Now   -  $formattedPrice\t$suffix\n"
             } else {
                 val formattedDate = dateFormat.format(date)
                 var hourValue = formattedDate.split(":")[0].toInt()
                 while (!dateTimeEmojiTable.containsKey(hourValue)) {
                     hourValue = (hourValue + 1) % 24
                 }
+
+                val paint = Paint().apply {
+                    textSize = 16f // set to your actual notification text size in pixels
+                    typeface = Typeface.MONOSPACE // ensures fixed width digits
+                }
                 val formattedPrice = "€%.2f".format(price)
                 val numberPart = formattedPrice.substring(1)
-                val alignedSuffix = padSuffix(numberPart, suffix)
-                returnString += dateTimeEmojiTable[hourValue] + " | $formattedDate  -  $formattedPrice$alignedSuffix\n"
+                val alignedSuffix = padSuffixWithTabs(paint, numberPart, suffix, 60.0f)
+                returnString += dateTimeEmojiTable[hourValue] + " | $formattedDate  -  $formattedPrice\t$suffix\n"
             }
         }
         return returnString
