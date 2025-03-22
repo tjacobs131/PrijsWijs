@@ -62,7 +62,7 @@ class EnergyNotificationService : Service() {
 
                 withContext(Dispatchers.Main) {
                     (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-                        .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(message))
+                        .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(message, prices.didPriceChange()))
                     Log.d("PrijsWijs", "Notification shown")
 
                     // Delay check to confirm the notification is active
@@ -91,7 +91,7 @@ class EnergyNotificationService : Service() {
     }
 
     // Returns a string of fixed-width figure spaces needed to pad the numeric part to the target pixel width,
-// then appends the given suffix.
+    // then appends the given suffix.
     private fun padSuffix(
         numberString: String,
         suffix: String,
@@ -173,8 +173,7 @@ class EnergyNotificationService : Service() {
                 val formattedPrice = "€%.2f".format(price)
                 // Remove the euro symbol for measurement
                 val numberPart = formattedPrice.substring(1)
-                val alignedSuffix = padSuffix(numberPart, suffix)
-                returnString += "\uD83D\uDCA1 |  Now   -  $formattedPrice$alignedSuffix\n"
+                returnString += "\uD83D\uDCA1 |  Now   -  $formattedPrice$suffix\n"
             } else {
                 val formattedDate = dateFormat.format(date)
                 var hourValue = formattedDate.split(":")[0].toInt()

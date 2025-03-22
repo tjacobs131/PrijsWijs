@@ -49,7 +49,7 @@ class NotificationBuilder(private val context: Context, private val settings: Se
       .build()
   }
 
-  fun buildFinalNotification(message: String, isError: Boolean = false): Notification {
+  fun buildFinalNotification(message: String, priceChanged: Boolean = false, isError: Boolean = false): Notification {
     val builder = NotificationCompat.Builder(context, "energy_prices")
       .setSmallIcon(R.drawable.notification_icon)
       .setContentTitle(
@@ -60,10 +60,15 @@ class NotificationBuilder(private val context: Context, private val settings: Se
       )
       .setContentText(message)
       .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-      .setSilent(!settings.vibrate)
 
     if (isError) {
-      builder.priority = NotificationCompat.PRIORITY_HIGH
+      builder.priority = NotificationCompat.PRIORITY_LOW
+      builder.setSilent(true)
+    } else if (priceChanged) {
+      builder.priority = NotificationCompat.PRIORITY_MAX
+      builder.setSilent(!settings.vibrate)
+    } else {
+      builder.setSilent(false)
     }
 
     return builder.build()
