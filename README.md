@@ -11,16 +11,16 @@
 
 # Voorbeeld van een notificatie
 ⚡ Today's Energy Prices ⚡<br>
-💡 |  Now   -  €0,01  	⭐<br>
+💡&ensp;|&nbsp;&nbsp;Now&ensp;-&nbsp;€0,01&ensp;⭐<br>
 ☀️ | 13:00  -  €0,01&ensp;⭐<br>
 ☀️ | 14:00  -  €0,01&ensp;⭐<br>
 ☀️ | 15:00  -  €0,05&ensp;🌱<br>
-☀️ | 16:00  -  €0,11&ensp;❗<br>
-🌆 | 17:00  -  €0,15&ensp;❗<br>
+☀️ | 16:00  -  €0,11&nbsp;&ensp;❗<br>
+🌆 | 17:00  -  €0,15&nbsp;&ensp;❗<br>
 🌆 | 18:00  -  €0,17&ensp;‼️<br>
 🌆 | 19:00  -  €0,17&ensp;‼️<br>
-🌙 | 22:00  -  €0,15&ensp;❗<br>
-🌙 | 23:00  -  €0,13&ensp;❗<br>
+🌙 | 22:00  -  €0,15&nbsp;&ensp;❗<br>
+🌙 | 23:00  -  €0,13&nbsp;&ensp;❗<br>
 
 
 # Installatie
