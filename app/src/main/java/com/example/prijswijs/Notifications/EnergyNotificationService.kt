@@ -92,23 +92,32 @@ class EnergyNotificationService : Service() {
         }
     }
 
-    // Returns a string of fixed-width figure spaces needed to pad the numeric part to the target pixel width,
-    // then appends the given suffix.
-    private fun padSuffixWithTabs(
-        paint: Paint,
-        numberPart: String,
-        suffix: String,
-        maxWidth: Float
+    private fun formatLine(
+        emoji: String,
+        formattedDate: String,
+        formattedPrice: String,
+        suffix: String
     ): String {
-        val tabWidth = paint.measureText("\t")
-        val currentWidth = paint.measureText(numberPart)
-        val missingWidth = maxWidth - currentWidth
-        var tabsNeeded = (missingWidth / tabWidth).toInt()
-        // If there are many ones, subtract one tab to compensate
-        if (numberPart.count { it == '1' } >= 3 && tabsNeeded > 0) {
-            tabsNeeded--
+        val paint = Paint().apply {
+            textSize = 14f
+            typeface = Typeface.MONOSPACE // optional but can help consistency
         }
-        return "\t".repeat(1) + suffix
+
+        // Build the portion up to (but not including) the suffix.
+        val baseLine = "$emoji | $formattedDate  -  $formattedPrice"
+
+        // Measure it in pixels.
+        val baseWidth = paint.measureText(baseLine)
+        val targetWidth = 136f
+
+        // Figure out how many " " are needed to make up the difference.
+        val spaceWidth = paint.measureText(" ")
+        val neededPx = targetWidth - baseWidth
+        val spaceCount = (neededPx / spaceWidth).toInt().coerceAtLeast(1)
+
+        // Build final line with suffix at the end.
+        val padding = " ".repeat(spaceCount)
+        return baseLine + padding + "\t" + suffix
     }
 
     private fun generateHourlyNotificationMessage(priceData: PriceData): String {
@@ -131,6 +140,8 @@ class EnergyNotificationService : Service() {
             val date = entry.key
             val price = entry.value
             var suffix = ""
+
+            val formattedPrice = "€%.2f".format(price)
 
             // Determine suffix based on dynamic thresholds
             if (range > 0) {
@@ -162,24 +173,14 @@ class EnergyNotificationService : Service() {
             // Format the price and then align the suffix based on the measured width.
             if (index == 0) {
                 // "Now" line
-                val formattedPrice = "€%.2f".format(price)
-                // Remove the euro symbol for measurement
-                val numberPart = formattedPrice.substring(1)
-                returnString += "\uD83D\uDCA1 |  Now   -  $formattedPrice\t$suffix\n"
+                returnString += formatLine("\uD83D\uDCA1", " Now ", formattedPrice, suffix) + "\n"
             } else {
                 val formattedDate = dateFormat.format(date)
                 var hourValue = formattedDate.split(":")[0].toInt()
                 while (!dateTimeEmojiTable.containsKey(hourValue)) {
                     hourValue = (hourValue + 1) % 24
                 }
-
-                val paint = Paint().apply {
-                    textSize = 16f // set to your actual notification text size in pixels
-                    typeface = Typeface.MONOSPACE // ensures fixed width digits
-                }
-                val formattedPrice = "€%.2f".format(price)
-                val numberPart = formattedPrice.substring(1)
-                returnString += dateTimeEmojiTable[hourValue] + " | $formattedDate  -  $formattedPrice\t$suffix\n"
+                returnString += dateTimeEmojiTable[hourValue]?.let { formatLine(it, dateFormat.format(date), formattedPrice, suffix) } + "\n"
             }
         }
         return returnString
