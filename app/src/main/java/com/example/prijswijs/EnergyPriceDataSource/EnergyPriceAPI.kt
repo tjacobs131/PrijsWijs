@@ -126,10 +126,17 @@ class EnergyPriceAPI {
         val earlyEntries = sortedEntries.filter { it.key.before(medianTime) }
         val lateEntries = sortedEntries.filter { !it.key.before(medianTime) }
 
-        val peak1 = earlyEntries.maxByOrNull { it.value }
-        val peak2 = lateEntries.maxByOrNull { it.value }
-        val trough1 = earlyEntries.minByOrNull { it.value }
-        val trough2 = lateEntries.minByOrNull { it.value }
+        val peak1Value = earlyEntries.maxByOrNull { it.value }?.value
+        val peak1 = peak1Value?.let { value -> earlyEntries.first { it.value == value } }
+
+        val peak2Value = lateEntries.maxByOrNull { it.value }?.value
+        val peak2 = peak2Value?.let { value -> lateEntries.first { it.value == value } }
+
+        val trough1Value = earlyEntries.minByOrNull { it.value }?.value
+        val trough1 = trough1Value?.let { value -> earlyEntries.first { it.value == value } }
+
+        val trough2Value = lateEntries.minByOrNull { it.value }?.value
+        val trough2 = trough2Value?.let { value -> lateEntries.first { it.value == value } }
 
         return mutableSetOf<Map.Entry<Date, Double>>().apply {
             peak1?.let { add(it) }
@@ -138,6 +145,7 @@ class EnergyPriceAPI {
             trough2?.let { add(it) }
         }
     }
+
 
     private fun sendGet(url: URL): String {
         with(url.openConnection() as HttpURLConnection) {
