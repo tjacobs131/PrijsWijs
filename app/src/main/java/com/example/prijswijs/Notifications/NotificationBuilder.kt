@@ -8,10 +8,15 @@ import android.graphics.Color
 import androidx.core.app.NotificationCompat
 import com.example.prijswijs.R
 import com.example.prijswijs.Model.Settings
+import kotlin.properties.Delegates
 
 class NotificationBuilder(private val context: Context, private val settings: Settings) {
   private val notificationManager: NotificationManager =
     context.getSystemService(NotificationManager::class.java)
+
+  companion object {
+    var vibrate by Delegates.notNull<Boolean>()
+  }
 
   fun createNotificationChannels() {
     // Create channel for background updates
@@ -49,7 +54,7 @@ class NotificationBuilder(private val context: Context, private val settings: Se
       .build()
   }
 
-  fun buildFinalNotification(message: String, priceChanged: Boolean = false, isError: Boolean = false): Notification {
+  fun buildFinalNotification(message: String, isError: Boolean = false): Notification {
     val builder = NotificationCompat.Builder(context, "energy_prices")
       .setSmallIcon(R.drawable.notification_icon)
       .setContentTitle(
@@ -64,13 +69,19 @@ class NotificationBuilder(private val context: Context, private val settings: Se
     if (isError) {
       builder.priority = NotificationCompat.PRIORITY_LOW
       builder.setSilent(true)
-    } else if (priceChanged) {
+    } else if (vibrate) {
       builder.priority = NotificationCompat.PRIORITY_MAX
-      builder.setSilent(!settings.vibrate)
-    } else {
       builder.setSilent(false)
+    } else {
+      builder.priority = NotificationCompat.PRIORITY_HIGH
+      builder.setSilent(true)
     }
 
     return builder.build()
   }
+
+  fun doVibration(doVibration: Boolean) {
+    vibrate = doVibration
+  }
+
 }

@@ -18,6 +18,26 @@ class Persistence() {
     }
   }
 
+  fun saveLastPrice(context: Context, priceData: PriceData) {
+    // Save price data to disk using SharedPreferences
+    val sharedPrefs = context.getSharedPreferences("lastPrice", Context.MODE_PRIVATE)
+    val editor = sharedPrefs.edit()
+    editor.putFloat("lastPrice", priceData.priceTimeMap?.values?.first()!!.toFloat())
+    editor.putFloat("troughPrice", priceData.troughPrice.toFloat())
+    editor.putFloat("peakPrice", priceData.peakPrice.toFloat())
+    editor.apply()
+  }
+
+  fun loadLastPrice(context: Context): PriceData {
+    val sharedPrefs = context.getSharedPreferences("lastPrice", Context.MODE_PRIVATE)
+    val lastPrice = sharedPrefs.getFloat("lastPrice", 0.0F).toDouble()
+    val peakPrice = sharedPrefs.getFloat("peakPrice", 0.0F).toDouble()
+    val troughPrice = sharedPrefs.getFloat("troughPrice", 0.0F).toDouble()
+    val priceMap = mutableMapOf<Date, Double>()
+    priceMap[Date()] = lastPrice
+    return PriceData(priceMap, peakPrice, troughPrice)
+  }
+
   fun saveSettings(context: Context, settings: Settings) {
     // Save settings to disk using SharedPreferences
     val sharedPrefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)

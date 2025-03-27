@@ -136,7 +136,7 @@ class MainActivity : ComponentActivity() {
                     Text(
                         text = "Notification Settings",
                         style = MaterialTheme.typography.headlineSmall.copy(color = textColorPrimary),
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
 
                     Card(
@@ -151,7 +151,8 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxWidth()
                         ) {
                             Text(
-                                text = "Vibrate When\nPrice Changes",
+                                //text = "Vibrate When Price\nBecomes High",
+                                text = "Vibrate When\nPrice Goes Up",
                                 style = MaterialTheme.typography.titleMedium.copy(color = textColorPrimary),
                                 modifier = Modifier.weight(1f)
                             )
@@ -169,7 +170,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 colors = SwitchDefaults.colors(
-                                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                    checkedTrackColor = Color(0xFFfbe8da),
                                     checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                     uncheckedTrackColor = textColorPrimary.copy(alpha = 0.4f),
                                     uncheckedThumbColor = textColorPrimary

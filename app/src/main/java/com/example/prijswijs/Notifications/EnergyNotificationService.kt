@@ -63,7 +63,7 @@ class EnergyNotificationService : Service() {
 
                 withContext(Dispatchers.Main) {
                     (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-                        .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(message, prices.didPriceChange()))
+                        .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(message))
                     Log.d("PrijsWijs", "Notification shown")
 
                     // Delay check to confirm the notification is active
@@ -136,6 +136,8 @@ class EnergyNotificationService : Service() {
 
         val keysList = priceData.priceTimeMap!!.keys.toList()
 
+        val lastPrice = persistence.loadLastPrice(this)
+
         priceData.priceTimeMap.entries.forEachIndexed { index, entry ->
             val date = entry.key
             val price = entry.value
@@ -150,15 +152,44 @@ class EnergyNotificationService : Service() {
                 val troughThreshold1 = priceData.troughPrice + 0.1 * range
                 val troughThreshold2 = priceData.troughPrice + 0.3 * range
 
-                suffix = when {
-                    price == priceData.priceTimeMap.values.min() -> "⭐"
-                    range < 0.06 -> ""
-                    price > peakThreshold1 && range > 0.15 -> "‼\uFE0F"
-                    price == priceData.priceTimeMap.values.max() || price > peakThreshold2 -> "❗"
-                    price < troughThreshold1 -> "⭐"
-                    price < troughThreshold2 && range > 0.10 -> "🌱"
-                    else -> ""
+                suffix = generateSuffix(
+                    price,
+                    priceData.troughPrice,
+                    priceData.peakPrice,
+                    range,
+                    peakThreshold1,
+                    peakThreshold2,
+                    troughThreshold1,
+                    troughThreshold2
+                )
+                if (index == 0){
+                    if (lastPrice.peakPrice != -99.0) {
+                        val lastSuffix = generateSuffix(
+                            lastPrice.priceTimeMap!!.values.first(),
+                            lastPrice.troughPrice,
+                            lastPrice.peakPrice,
+                            lastPrice.peakPrice - 0.1 * (lastPrice.peakPrice - lastPrice.troughPrice),
+                            lastPrice.peakPrice - 0.1 * (lastPrice.peakPrice - lastPrice.troughPrice),
+                            lastPrice.peakPrice - 0.4 * (lastPrice.peakPrice - lastPrice.troughPrice),
+                            lastPrice.troughPrice + 0.1 * (lastPrice.peakPrice - lastPrice.troughPrice),
+                            lastPrice.troughPrice + 0.3 * (lastPrice.peakPrice - lastPrice.troughPrice)
+                        )
+
+                        if (lastSuffix != "❗" && lastSuffix != "‼\uFE0F" && suffix == "❗" || suffix == "‼\uFE0F") {
+                            // Vibrate if price is higher than last price
+                            if (settings.vibrate) {
+                                notificationBuilder.doVibration(settings.vibrate)
+                            } else {
+                                notificationBuilder.doVibration(false)
+                            }
+                        } else {
+                            notificationBuilder.doVibration(false)
+                        }
+                    } else {
+                        notificationBuilder.doVibration(settings.vibrate)
+                    }
                 }
+
             }
 
             // Add a header line when a new day is detected.
@@ -183,7 +214,30 @@ class EnergyNotificationService : Service() {
                 returnString += dateTimeEmojiTable[hourValue]?.let { formatLine(it, dateFormat.format(date), formattedPrice, suffix) } + "\n"
             }
         }
+
+        // Save current price to disk
+        persistence.saveLastPrice(this, priceData)
+
         return returnString
+    }
+
+    private fun generateSuffix(
+        price: Double,
+        min: Double,
+        max: Double,
+        range: Double,
+        peakThreshold1: Double,
+        peakThreshold2: Double,
+        troughThreshold1: Double,
+        troughThreshold2: Double
+    ) = when {
+        price == min -> "⭐"
+        range < 0.06 -> ""
+        price > peakThreshold1 && range > 0.15 -> "‼\uFE0F"
+        price == max || price > peakThreshold2 -> "❗"
+        price < troughThreshold1 -> "⭐"
+        price < troughThreshold2 && range > 0.10 -> "🌱"
+        else -> ""
     }
 
 
