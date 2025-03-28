@@ -42,17 +42,17 @@ class NotificationBuilder(private val context: Context, private val settings: Se
     notificationManager.createNotificationChannel(priceChannel)
   }
 
-  fun buildProcessingNotification(): Notification {
-    // Ensure channels exist before creating notifications
-    createNotificationChannels()
-
-    return NotificationCompat.Builder(context, "service_channel")
-      .setContentTitle("Updating Energy Prices")
-      .setContentText("Fetching latest data...")
-      .setSmallIcon(R.drawable.notification_icon)
-      .setSilent(true)
-      .build()
-  }
+//  fun buildProcessingNotification(): Notification {
+//    // Ensure channels exist before creating notifications
+//    createNotificationChannels()
+//
+//    return NotificationCompat.Builder(context, "service_channel")
+//      .setContentTitle("Updating Energy Prices")
+//      .setContentText("Fetching latest data...")
+//      .setSmallIcon(R.drawable.notification_icon)
+//      .setSilent(true)
+//      .build()
+//  }
 
   fun buildFinalNotification(message: String, isError: Boolean = false): Notification {
     val builder = NotificationCompat.Builder(context, "energy_prices")

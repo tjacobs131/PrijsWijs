@@ -35,7 +35,6 @@ class EnergyNotificationService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Create channels and start service in foreground with a processing notification.
         notificationBuilder.createNotificationChannels()
-        startForeground(NOTIFICATION_ID, notificationBuilder.buildProcessingNotification())
         showNotification(this)
         return START_NOT_STICKY
     }
@@ -108,7 +107,8 @@ class EnergyNotificationService : Service() {
 
         // Measure it in pixels.
         val baseWidth = paint.measureText(baseLine)
-        val targetWidth = 136f
+        Log.println(Log.INFO, "PrijsWijs", "Base width: $baseWidth, space width: ${paint.measureText(" ")}")
+        val targetWidth = 134f
 
         // Figure out how many " " are needed to make up the difference.
         val spaceWidth = paint.measureText(" ")
