@@ -9,6 +9,8 @@ import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.TextView
+import com.example.prijswijs.Alarms.AlarmScheduler
 import com.example.prijswijs.EnergyPriceDataSource.CachedPricesUnavailableException
 import com.example.prijswijs.EnergyPriceDataSource.EnergyPriceAPI
 import com.example.prijswijs.Persistence.Persistence
@@ -22,7 +24,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlin.math.floor
+import kotlin.math.ceil
 
 class EnergyNotificationService : Service() {
     private val NOTIFICATION_ID = 1337420
@@ -33,10 +35,13 @@ class EnergyNotificationService : Service() {
     private val notificationBuilder by lazy { NotificationBuilder(this, settings) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Schedule the next alarm immediately
+        AlarmScheduler.scheduleHourlyAlarm(this)
+
         // Create channels and start service in foreground with a processing notification.
         notificationBuilder.createNotificationChannels()
         showNotification(this)
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     private fun showNotification(context: Context) {
@@ -54,6 +59,7 @@ class EnergyNotificationService : Service() {
                             .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(errorMessage, isError = true))
                     }
                     stopSelf()
+                    return@launch
                 }
 
                 Log.d("PrijsWijs", "Prices fetched successfully.")
@@ -77,8 +83,6 @@ class EnergyNotificationService : Service() {
                         }
                     }, 5000)
                 }
-
-
             } catch (e: Exception) {
                 Log.e("PrijsWijs", "Notification failed to show", e)
                 val errorMessage = "Error: Notification failed to show"
@@ -95,30 +99,29 @@ class EnergyNotificationService : Service() {
         emoji: String,
         formattedDate: String,
         formattedPrice: String,
-        suffix: String
+        suffix: String,
+        targetWidth: Float
     ): String {
+        val textView = TextView(this)
+        val systemTextSize = textView.textSize
         val paint = Paint().apply {
-            textSize = 14f
-            typeface = Typeface.MONOSPACE // optional but can help consistency
+            textSize = systemTextSize
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
         }
 
-        // Build the portion up to (but not including) the suffix.
         val baseLine = "$emoji | $formattedDate  -  $formattedPrice"
-
-        // Measure it in pixels.
         val baseWidth = paint.measureText(baseLine)
-        Log.println(Log.INFO, "PrijsWijs", "Base width: $baseWidth, space width: ${paint.measureText(" ")}")
-        val targetWidth = 134f
-
-        // Figure out how many " " are needed to make up the difference.
         val spaceWidth = paint.measureText(" ")
-        val neededPx = targetWidth - baseWidth
-        val spaceCount = (neededPx / spaceWidth).toInt().coerceAtLeast(1)
 
-        // Build final line with suffix at the end.
+        // Calculate the pixel gap until the target width.
+        val neededPx = targetWidth - baseWidth
+        // Round up so we fill the gap exactly.
+        val spaceCount = if (neededPx > 0) ceil(neededPx / spaceWidth).toInt() else 0
+
         val padding = " ".repeat(spaceCount)
         return baseLine + padding + "\t" + suffix
     }
+
 
     private fun generateHourlyNotificationMessage(priceData: PriceData): String {
         var returnString = ""
@@ -134,18 +137,60 @@ class EnergyNotificationService : Service() {
             23 to "\uD83C\uDF19"
         )
 
-        val keysList = priceData.priceTimeMap!!.keys.toList()
+        // Prepare a Paint instance
+        val textView = TextView(this)
+        val systemTextSize = textView.textSize
+        val paint = Paint().apply {
+            textSize = systemTextSize
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
+        }
+        // Use a fixed tab width based on 4 spaces.
+        val spaceWidth = paint.measureText(" ")
+        val fixedTabWidth = spaceWidth * 4
 
-        val lastPrice = persistence.loadLastPrice(this)
+        // First pass: compute the maximum base width.
+        var maxBaseWidth = 0f
+        val keysList = priceData.priceTimeMap!!.keys.toList()
+        val baseLineData = mutableListOf<Triple<String, String, String>>()  // (emoji, formattedDate, formattedPrice)
 
         priceData.priceTimeMap.entries.forEachIndexed { index, entry ->
             val date = entry.key
             val price = entry.value
-            var suffix = ""
+            val formattedPrice = "€%.2f".format(price)
+            val emoji: String
+            val formattedDate: String
+            if (index == 0) {
+                emoji = "\uD83D\uDCA1" // "Now" line
+                formattedDate = " Now "
+            } else {
+                formattedDate = dateFormat.format(date)
+                var hourValue = formattedDate.split(":")[0].toInt()
+                while (!dateTimeEmojiTable.containsKey(hourValue)) {
+                    hourValue = (hourValue + 1) % 24
+                }
+                emoji = dateTimeEmojiTable[hourValue] ?: ""
+            }
+            val baseLine = "$emoji | $formattedDate  -  $formattedPrice"
+            val width = paint.measureText(baseLine)
+            if (width > maxBaseWidth) maxBaseWidth = width
+            baseLineData.add(Triple(emoji, formattedDate, formattedPrice))
+        }
 
+        // Compute the next tab stop and target width.
+        // We round up maxBaseWidth to the next multiple of fixedTabWidth
+        val nextTabStop = (ceil(maxBaseWidth / fixedTabWidth) * fixedTabWidth).toFloat()
+        val targetWidth = nextTabStop - (fixedTabWidth / 2f) + spaceWidth
+
+
+        val lastPrice = persistence.loadLastPrice(this)
+
+        // Second pass: build final message using the computed targetWidth.
+        priceData.priceTimeMap.entries.forEachIndexed { index, entry ->
+            val date = entry.key
+            val price = entry.value
+            var suffix = ""
             val formattedPrice = "€%.2f".format(price)
 
-            // Determine suffix based on dynamic thresholds
             if (range > 0) {
                 val peakThreshold1 = priceData.peakPrice - 0.1 * range
                 val peakThreshold2 = priceData.peakPrice - 0.4 * range
@@ -162,7 +207,7 @@ class EnergyNotificationService : Service() {
                     troughThreshold1,
                     troughThreshold2
                 )
-                if (index == 0){
+                if (index == 0) {
                     if (lastPrice.peakPrice != -99.0) {
                         val lastSuffix = generateSuffix(
                             lastPrice.priceTimeMap!!.values.first(),
@@ -174,9 +219,7 @@ class EnergyNotificationService : Service() {
                             lastPrice.troughPrice + 0.1 * (lastPrice.peakPrice - lastPrice.troughPrice),
                             lastPrice.troughPrice + 0.3 * (lastPrice.peakPrice - lastPrice.troughPrice)
                         )
-
-                        if (lastSuffix != "❗" && lastSuffix != "‼\uFE0F" && suffix == "❗" || suffix == "‼\uFE0F") {
-                            // Vibrate if price is higher than last price
+                        if (lastSuffix != "❗" && lastSuffix != "‼\uFE0F" && (suffix == "❗" || suffix == "‼\uFE0F")) {
                             if (settings.vibrate) {
                                 notificationBuilder.doVibration(settings.vibrate)
                             } else {
@@ -189,10 +232,9 @@ class EnergyNotificationService : Service() {
                         notificationBuilder.doVibration(settings.vibrate)
                     }
                 }
-
             }
 
-            // Add a header line when a new day is detected.
+            // Add header line when a new day is detected.
             if (index > 0) {
                 val prevDate = keysList[index - 1]
                 if (isNewDay(prevDate, date)) {
@@ -201,23 +243,21 @@ class EnergyNotificationService : Service() {
                 }
             }
 
-            // Format the price and then align the suffix based on the measured width.
+            // Use our precomputed baseLineData along with the targetWidth.
             if (index == 0) {
-                // "Now" line
-                returnString += formatLine("\uD83D\uDCA1", " Now ", formattedPrice, suffix) + "\n"
+                returnString += formatLine("\uD83D\uDCA1", " Now ", formattedPrice, suffix, targetWidth) + "\n"
             } else {
-                val formattedDate = dateFormat.format(date)
-                var hourValue = formattedDate.split(":")[0].toInt()
-                while (!dateTimeEmojiTable.containsKey(hourValue)) {
-                    hourValue = (hourValue + 1) % 24
-                }
-                returnString += dateTimeEmojiTable[hourValue]?.let { formatLine(it, dateFormat.format(date), formattedPrice, suffix) } + "\n"
+                returnString += formatLine(
+                    baseLineData[index].first,
+                    baseLineData[index].second,
+                    baseLineData[index].third,
+                    suffix,
+                    targetWidth
+                ) + "\n"
             }
         }
 
-        // Save current price to disk
         persistence.saveLastPrice(this, priceData)
-
         return returnString
     }
 
@@ -240,14 +280,12 @@ class EnergyNotificationService : Service() {
         else -> ""
     }
 
-
     private fun isNewDay(date1: Date, date2: Date): Boolean {
         val cal1 = Calendar.getInstance().apply { time = date1 }
         val cal2 = Calendar.getInstance().apply { time = date2 }
         return cal1.get(Calendar.DAY_OF_YEAR) != cal2.get(Calendar.DAY_OF_YEAR) ||
                 cal1.get(Calendar.YEAR) != cal2.get(Calendar.YEAR)
     }
-
 
     override fun onBind(intent: Intent?) = null
 }

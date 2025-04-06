@@ -25,7 +25,6 @@ class EnergyPriceAPI {
         }
         val localStartTime = calendar.time
 
-        calendar.time = Date()
         calendar.add(Calendar.HOUR_OF_DAY, 32)
         val localEndTime = calendar.time
 
