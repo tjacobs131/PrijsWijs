@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.example.prijswijs.Notifications.EnergyNotificationService
 import com.example.prijswijs.Persistence.Persistence
 import java.time.LocalDateTime
 import java.util.Calendar
@@ -32,10 +33,12 @@ object AlarmScheduler {
             return
         }
 
-        val intent = Intent(context, HourlyReceiver::class.java).apply {
+        // Now point directly to EnergyNotificationService
+        val intent = Intent(context, EnergyNotificationService::class.java).apply {
             action = "HOURLY_UPDATE_ACTION"
         }
-        val pendingIntent = PendingIntent.getBroadcast(
+        // Use getService instead of getBroadcast
+        val pendingIntent = PendingIntent.getService(
             context,
             HOURLY_REQUEST_CODE,
             intent,
@@ -54,13 +57,11 @@ object AlarmScheduler {
             currentHour >= bedTimeHour || currentHour < wakeUpHour
         }
 
-        Log.println(Log.INFO, "PrijsWijs", "Current time: ${calendar.get(Calendar.HOUR_OF_DAY)}, Bedtime: $bedTimeHour, Wakeup: $wakeUpHour")
+        Log.println(Log.INFO, "PrijsWijs", "Current time: $currentHour, Bedtime: $bedTimeHour, Wakeup: $wakeUpHour")
 
         if (isPastBedtime) {
-            // Schedule next alarm at wake-up time
-            val calendar = Calendar.getInstance().apply {
+            calendar.apply {
                 timeInMillis = System.currentTimeMillis()
-                // Add day if bedtime is today but wake-up is tomorrow
                 if (bedTimeHour in wakeUpHour..currentHour) {
                     add(Calendar.DAY_OF_MONTH, 1)
                 }
@@ -69,7 +70,6 @@ object AlarmScheduler {
                 set(Calendar.SECOND, 5)
                 set(Calendar.MILLISECOND, 0)
             }
-            // Ensure wake-up is not in the past (if called right at wake-up hour)
             if (calendar.timeInMillis <= System.currentTimeMillis()) {
                 calendar.add(Calendar.DAY_OF_MONTH, 1)
             }
@@ -82,8 +82,7 @@ object AlarmScheduler {
                 pendingIntent
             )
         } else {
-            // Schedule at next hour
-            val calendar = Calendar.getInstance().apply {
+            calendar.apply {
                 timeInMillis = System.currentTimeMillis()
                 add(Calendar.HOUR, 1)
                 set(Calendar.MINUTE, 0)
