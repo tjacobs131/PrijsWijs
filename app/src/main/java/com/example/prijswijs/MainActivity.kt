@@ -334,4 +334,24 @@ class MainActivity : ComponentActivity() {
         )
         ActivityCompat.requestPermissions(this, permissions, allPermissions)
     }
+
+    @Deprecated("Deprecated in Java")
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 101 ) {
+            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                Log.println(Log.INFO, "PrijsWijs", "Permission granted")
+                // Start notification service
+                Intent(this, EnergyNotificationService::class.java).also { intent ->
+                    startService(intent)
+                }
+            } else {
+                Log.println(Log.INFO, "PrijsWijs", "Permission denied")
+            }
+        }
+    }
 }
