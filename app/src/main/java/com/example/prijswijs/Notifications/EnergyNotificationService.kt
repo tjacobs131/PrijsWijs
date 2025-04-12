@@ -239,7 +239,7 @@ class EnergyNotificationService : Service() {
                 val prevDate = keysList[index - 1]
                 if (isNewDay(prevDate, date)) {
                     val currentDate = Calendar.getInstance().apply { time = date }
-                    returnString += "\uD83C\uDF11 | —— ${currentDate.get(Calendar.DAY_OF_MONTH)} ${currentDate.getDisplayName(Calendar.MONTH, Calendar.SHORT, Locale.US)} ——\n"
+                    returnString += "\uD83C\uDF11   —— ${currentDate.get(Calendar.DAY_OF_MONTH)} ${currentDate.getDisplayName(Calendar.MONTH, Calendar.SHORT, Locale.US)} ——\n"
                 }
             }
 
@@ -271,13 +271,13 @@ class EnergyNotificationService : Service() {
         troughThreshold1: Double,
         troughThreshold2: Double
     ) = when {
-        price == min -> "⭐"
-        range < 0.06 -> ""
-        price > peakThreshold1 && range > 0.15 -> "‼\uFE0F"
-        price == max || price > peakThreshold2 -> "❗"
-        price < troughThreshold1 -> "⭐"
-        price < troughThreshold2 && range > 0.10 -> "🌱"
-        else -> ""
+        price == min -> "|⭐"
+        range < 0.06 -> "|"
+        price > peakThreshold1 && range > 0.15 -> "|‼\uFE0F"
+        price == max || price > peakThreshold2 -> "|❗"
+        price < troughThreshold1 -> "|⭐"
+        price < troughThreshold2 && range > 0.10 -> "|🌱"
+        else -> "|"
     }
 
     private fun isNewDay(date1: Date, date2: Date): Boolean {
