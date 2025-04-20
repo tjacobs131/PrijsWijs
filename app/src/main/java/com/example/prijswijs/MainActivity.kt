@@ -1,6 +1,8 @@
 package com.example.prijswijs
 
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -44,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.example.prijswijs.Alarms.AlarmScheduler
 import com.example.prijswijs.Notifications.EnergyNotificationService
 import com.example.prijswijs.Persistence.Persistence
@@ -52,6 +55,8 @@ import com.example.prijswijs.ui.theme.PrijsWijsTheme
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    companion object val PERM_REQ = 101
 
     private var vibrateEnabled by mutableStateOf(false)
     private var bedTimeHour by mutableIntStateOf(21)  // 21h
@@ -67,15 +72,11 @@ class MainActivity : ComponentActivity() {
 
         loadSettings()
 
-        requestPermissions()
+        requestOrStart()
 
         Log.println(Log.INFO, "PrijsWijs", "Showing first notification")
 
         scheduler.scheduleHourlyAlarm(this)
-
-        Intent(this, EnergyNotificationService::class.java).also { intent ->
-            startService(intent)
-        }
 
         setContent {
             PrijsWijsTheme {
@@ -100,6 +101,29 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private fun requestOrStart() {
+        if (Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            startEnergyNotifications()
+        } else {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                PERM_REQ
+            )
+        }
+    }
+
+    private fun startEnergyNotifications() {
+        scheduler.scheduleHourlyAlarm(this)
+
+        Intent(this, EnergyNotificationService::class.java).also(::startService)
     }
 
     @Composable
@@ -340,20 +364,16 @@ class MainActivity : ComponentActivity() {
     @Deprecated("Deprecated in Java")
     override fun onRequestPermissionsResult(
         requestCode: Int,
-        permissions: Array<String>,
+        permissions: Array<out String>,
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 101 ) {
-            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                Log.println(Log.INFO, "PrijsWijs", "Permission granted")
-                // Start notification service
-                Intent(this, EnergyNotificationService::class.java).also { intent ->
-                    startService(intent)
-                }
-            } else {
-                Log.println(Log.INFO, "PrijsWijs", "Permission denied")
-            }
+
+        if (requestCode == PERM_REQ &&
+            grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            startEnergyNotifications()   // runs only if it hasn’t run yet
         }
     }
 }
