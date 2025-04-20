@@ -1,8 +1,10 @@
 package com.example.prijswijs.EnergyPriceDataSource
 
 import android.content.Context
+import android.util.Log
 import com.example.prijswijs.Model.PriceData
 import com.example.prijswijs.Persistence.Persistence
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -38,20 +40,23 @@ class EnergyPriceAPI {
 
         val url = createUrl(utcStartDate, utcEndDate)
         var prices: PriceData? = null
-        var retryCountdown = 2
+        var retryCountdown = 3
 
         while (retryCountdown > 0) {
             try {
                 val response = sendGet(url)
                 prices = processPrices(JSONObject(response).getJSONArray("Prices"))
+                if (prices.priceTimeMap?.isEmpty() == true) {
+                    throw IOException("No valid prices found")
+                }
                 break
             } catch (ex: IOException) {
                 retryCountdown--
                 if (retryCountdown == 0) {
                     prices = persistence.loadCachedPrices(context).filterMapTimes() // Take from previously cached prices
-                    break
                 }
             }
+            kotlinx.coroutines.delay(2000)
         }
         
         persistence.saveCachedPrices(context, prices!!)
