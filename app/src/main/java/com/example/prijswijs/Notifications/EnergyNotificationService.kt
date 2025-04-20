@@ -127,14 +127,16 @@ class EnergyNotificationService : Service() {
         val dateFormat = SimpleDateFormat("HH:mm", Locale.US)
         val range = priceData.peakPrice - priceData.troughPrice
 
-        val dateTimeEmojiTable = mapOf(
-            4 to "\uD83C\uDF11",
-            6 to "\uD83C\uDF05",
-            8 to "🌄",
-            16 to "☀️",
-            19 to "🌆",
-            23 to "\uD83C\uDF19"
-        )
+        // 0‑23 mapped once, then reused.
+        val dateTimeEmojiTable = (0..23).associateWith { h ->
+            when (h) {
+                in 6..7   -> "🌅"  // Sunrise
+                in 8..11  -> "🌇"  // Morning city
+                in 12..17 -> "🏙️"  // Daytime city
+                in 18..20 -> "🌆"  // Sunset city
+                else      -> "🌃"  // Night city
+            }
+        }
 
         // Prepare a Paint instance
         val textView = TextView(this)
@@ -163,11 +165,8 @@ class EnergyNotificationService : Service() {
                 formattedDate = " Now "
             } else {
                 formattedDate = dateFormat.format(date)
-                var hourValue = formattedDate.split(":")[0].toInt()
-                while (!dateTimeEmojiTable.containsKey(hourValue)) {
-                    hourValue = (hourValue + 1) % 24
-                }
-                emoji = dateTimeEmojiTable[hourValue] ?: ""
+                val hourValue = formattedDate.substring(0, 2).toInt()
+                emoji = dateTimeEmojiTable[hourValue] ?: "🌃" // Default to night city
             }
             val baseLine = "$emoji | $formattedDate  -  $formattedPrice"
             val width = paint.measureText(baseLine)
@@ -176,10 +175,8 @@ class EnergyNotificationService : Service() {
         }
 
         // Compute the next tab stop and target width.
-        // We round up maxBaseWidth to the next multiple of fixedTabWidth
         val nextTabStop = (ceil(maxBaseWidth / fixedTabWidth) * fixedTabWidth).toFloat()
         val targetWidth = nextTabStop - (fixedTabWidth / 2f) + spaceWidth
-
 
         val lastPrice = persistence.loadLastPrice(this)
 
@@ -218,7 +215,7 @@ class EnergyNotificationService : Service() {
                             lastPrice.troughPrice + 0.1 * (lastPrice.peakPrice - lastPrice.troughPrice),
                             lastPrice.troughPrice + 0.3 * (lastPrice.peakPrice - lastPrice.troughPrice)
                         )
-                        if (lastSuffix != "❗" && lastSuffix != "‼\uFE0F" && (suffix == "❗" || suffix == "‼\uFE0F")) {
+                        if (lastSuffix !in listOf("❗", "‼️") && suffix in listOf("❗", "‼️")) {
                             if (settings.vibrate) {
                                 notificationBuilder.doVibration(settings.vibrate)
                             } else {
@@ -238,7 +235,7 @@ class EnergyNotificationService : Service() {
                 val prevDate = keysList[index - 1]
                 if (isNewDay(prevDate, date)) {
                     val currentDate = Calendar.getInstance().apply { time = date }
-                    returnString += "\uD83C\uDF11   —— ${currentDate.get(Calendar.DAY_OF_MONTH)} ${currentDate.getDisplayName(Calendar.MONTH, Calendar.SHORT, Locale.US)} ——\n"
+                    returnString += "\uD83C\uDF03   —— ${currentDate.get(Calendar.DAY_OF_MONTH)} ${currentDate.getDisplayName(Calendar.MONTH, Calendar.SHORT, Locale.US)} ——\n"
                 }
             }
 
@@ -256,9 +253,9 @@ class EnergyNotificationService : Service() {
             }
         }
 
-        persistence.saveLastPrice(this, priceData)
-        return returnString
+        return returnString.trimEnd()
     }
+
 
     private fun generateSuffix(
         price: Double,
