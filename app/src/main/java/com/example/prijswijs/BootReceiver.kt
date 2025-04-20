@@ -12,6 +12,8 @@ class BootReceiver : BroadcastReceiver() {
 
   override fun onReceive(context: Context, intent: Intent?) {
 
+    val scheduler = AlarmScheduler()
+
     if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
 
       // Start foreground service immediately
@@ -21,7 +23,7 @@ class BootReceiver : BroadcastReceiver() {
       Log.println(Log.INFO, "PrijsWijs", "BootReceiver triggered")
 
       // Schedule hourly updates
-      AlarmScheduler.scheduleHourlyAlarm(context)
+      scheduler.scheduleHourlyAlarm(context)
     }
   }
 }

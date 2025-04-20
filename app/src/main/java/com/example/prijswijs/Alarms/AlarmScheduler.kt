@@ -2,6 +2,7 @@ package com.example.prijswijs.Alarms
 
 import android.app.AlarmManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -14,7 +15,17 @@ import java.time.LocalDateTime
 import java.util.Calendar
 import android.provider.Settings as AndroidSettings
 
-object AlarmScheduler {
+class AlarmScheduler : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        scheduleHourlyAlarm(context)
+
+        // Start service to show notification
+        context.startForegroundService(Intent(context, EnergyNotificationService::class.java))
+
+        Log.println(Log.INFO, "PrijsWijs", "HourlyReceiver triggered")
+    }
+
     fun scheduleHourlyAlarm(context: Context) {
         val alarmManager = context.getSystemService(AlarmManager::class.java)
         val settings = Persistence().loadSettings(context)
@@ -34,11 +45,11 @@ object AlarmScheduler {
         }
 
         // Now point directly to EnergyNotificationService
-        val intent = Intent(context, EnergyNotificationService::class.java).apply {
+        val intent = Intent(context, AlarmScheduler::class.java).apply {
             action = "HOURLY_UPDATE_ACTION"
         }
         // Use getService instead of getBroadcast
-        val pendingIntent = PendingIntent.getService(
+        val pendingIntent = PendingIntent.getBroadcast(
             context,
             HOURLY_REQUEST_CODE,
             intent,
@@ -75,30 +86,24 @@ object AlarmScheduler {
             }
 
             Log.println(Log.INFO, "PrijsWijs", "Scheduling at wake-up: ${calendar.time}")
-
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
         } else {
             calendar.apply {
                 timeInMillis = System.currentTimeMillis()
-                add(Calendar.HOUR, 1)
+                set(Calendar.HOUR_OF_DAY, currentHour + 1) // Schedule for the next hour
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 5)
                 set(Calendar.MILLISECOND, 0)
             }
 
             Log.println(Log.INFO, "PrijsWijs", "Scheduling next hour: ${calendar.time}")
-
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                calendar.timeInMillis,
-                pendingIntent
-            )
         }
+
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            pendingIntent
+        )
     }
 
-    private const val HOURLY_REQUEST_CODE = 1337420
+    private val HOURLY_REQUEST_CODE = 1337420
 }

@@ -35,12 +35,11 @@ class EnergyNotificationService : Service() {
     private val notificationBuilder by lazy { NotificationBuilder(this, settings) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Schedule the next alarm immediately
-        AlarmScheduler.scheduleHourlyAlarm(this)
-
+        this.startForeground(NOTIFICATION_ID, notificationBuilder.buildProcessingNotification())
         // Create channels and start service in foreground with a processing notification.
         notificationBuilder.createNotificationChannels()
         showNotification(this)
+
         return START_STICKY
     }
 

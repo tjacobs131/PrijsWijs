@@ -57,6 +57,8 @@ class MainActivity : ComponentActivity() {
     private var bedTimeHour by mutableIntStateOf(21)  // 21h
     private var wakeTimeHour by mutableIntStateOf(6)  // 6h
 
+    private val scheduler: AlarmScheduler = AlarmScheduler()
+
     private val persistence = Persistence.getInstance()
     private lateinit var settings: Settings
 
@@ -69,7 +71,7 @@ class MainActivity : ComponentActivity() {
 
         Log.println(Log.INFO, "PrijsWijs", "Showing first notification")
 
-        AlarmScheduler.scheduleHourlyAlarm(this)
+        scheduler.scheduleHourlyAlarm(this)
 
         Intent(this, EnergyNotificationService::class.java).also { intent ->
             startService(intent)
@@ -88,12 +90,12 @@ class MainActivity : ComponentActivity() {
                     onBedTimeChanged = { newHour ->
                         bedTimeHour = newHour
                         saveSettings()
-                        AlarmScheduler.scheduleHourlyAlarm(this)
+                        scheduler.scheduleHourlyAlarm(this)
                     },
                     onWakeTimeChanged = { newHour ->
                         wakeTimeHour = newHour
                         saveSettings()
-                        AlarmScheduler.scheduleHourlyAlarm(this)
+                        scheduler.scheduleHourlyAlarm(this)
                     }
                 )
             }
