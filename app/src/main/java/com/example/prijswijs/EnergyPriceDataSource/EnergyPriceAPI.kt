@@ -6,7 +6,9 @@ import com.example.prijswijs.Model.PriceData
 import com.example.prijswijs.Persistence.Persistence
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
@@ -27,7 +29,7 @@ class EnergyPriceAPI {
         }
         val localStartTime = calendar.time
 
-        calendar.add(Calendar.HOUR_OF_DAY, 32)
+        calendar.add(Calendar.HOUR_OF_DAY, 48)
         val localEndTime = calendar.time
 
         val utcDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.000'Z'", Locale.US).apply {
@@ -44,7 +46,7 @@ class EnergyPriceAPI {
 
         while (retryCountdown > 0) {
             try {
-                val response = sendGet(url)
+                val response = withTimeout(15_000) { sendGet(url) }
                 prices = processPrices(JSONObject(response).getJSONArray("Prices"))
                 if (prices.priceTimeMap?.isEmpty() == true) {
                     throw IOException("No valid prices found")
@@ -55,6 +57,8 @@ class EnergyPriceAPI {
                 if (retryCountdown == 0) {
                     prices = persistence.loadCachedPrices(context).filterMapTimes() // Take from previously cached prices
                 }
+            } catch (ex: TimeoutCancellationException) {
+                prices = persistence.loadCachedPrices(context).filterMapTimes() // Take from previously cached prices
             }
             kotlinx.coroutines.delay(2000)
         }
@@ -84,7 +88,7 @@ class EnergyPriceAPI {
             val priceInfo = prices.getJSONObject(i)
             val utcDate = readDateFormat.parse(priceInfo.getString("readingDate"))!!
 
-            if (utcDate.before(localStartTime)) continue
+            //if (utcDate.before(localStartTime)) continue
 
             val amsterdamDate = Calendar.getInstance(amsterdamTZ).apply {
                 timeInMillis = utcDate.time

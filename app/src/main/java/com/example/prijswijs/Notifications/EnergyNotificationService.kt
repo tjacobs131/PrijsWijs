@@ -9,27 +9,30 @@ import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.TypedValue
 import android.widget.TextView
+import androidx.compose.ui.res.stringArrayResource
 import com.example.prijswijs.Alarms.AlarmScheduler
 import com.example.prijswijs.EnergyPriceDataSource.CachedPricesUnavailableException
 import com.example.prijswijs.EnergyPriceDataSource.EnergyPriceAPI
+import com.example.prijswijs.MainActivity
 import com.example.prijswijs.Persistence.Persistence
 import com.example.prijswijs.Model.PriceData
 import com.example.prijswijs.Model.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.ceil
 
-class EnergyNotificationService : Service() {
-    private val NOTIFICATION_ID = 1337420
-    private val FINAL_NOTIFICATION_ID = 1338
-
+class EnergyNotificationService : Service(), CoroutineScope by MainScope() {
     private val persistence: Persistence by lazy { Persistence() }
     private val settings: Settings by lazy { persistence.loadSettings(this) }
     private val notificationBuilder by lazy { NotificationBuilder(this, settings) }
@@ -43,7 +46,48 @@ class EnergyNotificationService : Service() {
         return START_STICKY
     }
 
+    override fun onDestroy() {
+        cancel()         // cancels everything launched from this scope
+        super.onDestroy()
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        initPaint(this)
+    }
+
+    private companion object {
+        private const val NOTIFICATION_ID = 1337420
+        private const val FINAL_NOTIFICATION_ID = 1338
+
+        private lateinit var paint: Paint
+        fun initPaint(context: Context) {
+            // get the system default text size in SP
+            val textSize = TypedValue
+                .applyDimension(TypedValue.COMPLEX_UNIT_SP, 14f, context.resources.displayMetrics)
+
+            paint = Paint().apply {
+                this.textSize = textSize
+                typeface = Typeface.MONOSPACE
+            }
+        }
+
+        val dateFormat = SimpleDateFormat("HH:mm", Locale.US)
+
+        // 0‑23 mapped once, then reused.
+        val dateTimeEmojiTable = (0..23).associateWith { h ->
+            when (h) {
+                in 6..11  -> "\uD83C\uDF05"  // Morning city
+                in 12..17 -> "🏙️"  // Daytime city
+                in 18..22 -> "🌆"  // Sunset city
+                else      -> "🌃"  // Night city
+            }
+        }
+    }
+
     private fun showNotification(context: Context) {
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 Log.d("PrijsWijs", "Fetching energy prices...")
@@ -53,10 +97,7 @@ class EnergyNotificationService : Service() {
                 } catch (cacheEx: CachedPricesUnavailableException) {
                     Log.e("PrijsWijs", "Failed to fetch prices", cacheEx)
                     val errorMessage = "Error: " + cacheEx.message
-                    withContext(Dispatchers.Main) {
-                        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-                            .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(errorMessage, isError = true))
-                    }
+                    notificationManager.notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(errorMessage, isError = true))
                     stopSelf()
                     return@launch
                 }
@@ -66,14 +107,12 @@ class EnergyNotificationService : Service() {
                 Log.d("PrijsWijs", "Showing message: $message")
 
                 withContext(Dispatchers.Main) {
-                    (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-                        .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(message))
+                    notificationManager.notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(message))
                     Log.d("PrijsWijs", "Notification shown")
 
                     // Delay check to confirm the notification is active
                     Handler(Looper.getMainLooper()).postDelayed({
-                        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-                        if (nm.activeNotifications.none { it.id == FINAL_NOTIFICATION_ID }) {
+                        if (notificationManager.activeNotifications.none { it.id == FINAL_NOTIFICATION_ID }) {
                             Log.d("PrijsWijs", "Notification not shown (after delay check), potentially an issue.")
                         } else {
                             Log.d("PrijsWijs", "Notification shown and confirmed.")
@@ -85,10 +124,7 @@ class EnergyNotificationService : Service() {
             } catch (e: Exception) {
                 Log.e("PrijsWijs", "Notification failed to show", e)
                 val errorMessage = "Error: Notification failed to show"
-                withContext(Dispatchers.Main) {
-                    (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-                        .notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(errorMessage, isError = true))
-                }
+                notificationManager.notify(FINAL_NOTIFICATION_ID, notificationBuilder.buildFinalNotification(errorMessage, isError = true))
                 stopSelf()
             }
         }
@@ -101,13 +137,6 @@ class EnergyNotificationService : Service() {
         suffix: String,
         targetWidth: Float
     ): String {
-        val textView = TextView(this)
-        val systemTextSize = textView.textSize
-        val paint = Paint().apply {
-            textSize = systemTextSize
-            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
-        }
-
         val baseLine = "$emoji | $formattedDate  -  $formattedPrice"
         val baseWidth = paint.measureText(baseLine)
         val spaceWidth = paint.measureText(" ")
@@ -115,7 +144,7 @@ class EnergyNotificationService : Service() {
         // Calculate the pixel gap until the target width.
         val neededPx = targetWidth - baseWidth
         // Round up so we fill the gap exactly.
-        val spaceCount = if (neededPx > 0) ceil(neededPx / spaceWidth).toInt() else 0
+        val spaceCount = if (neededPx > 0) ceil(neededPx / spaceWidth!!).toInt() else 0
 
         val padding = " ".repeat(spaceCount)
         return baseLine + padding + "\t" + suffix
@@ -123,20 +152,8 @@ class EnergyNotificationService : Service() {
 
 
     private fun generateHourlyNotificationMessage(priceData: PriceData): String {
-        var returnString = ""
-        val dateFormat = SimpleDateFormat("HH:mm", Locale.US)
+        val stringBuilder = StringBuilder(512)
         val range = priceData.peakPrice - priceData.troughPrice
-
-        // 0‑23 mapped once, then reused.
-        val dateTimeEmojiTable = (0..23).associateWith { h ->
-            when (h) {
-                in 6..7   -> "🌅"  // Sunrise
-                in 8..11  -> "🌇"  // Morning city
-                in 12..17 -> "🏙️"  // Daytime city
-                in 18..20 -> "🌆"  // Sunset city
-                else      -> "🌃"  // Night city
-            }
-        }
 
         // Prepare a Paint instance
         val textView = TextView(this)
@@ -180,100 +197,111 @@ class EnergyNotificationService : Service() {
 
         val lastPrice = persistence.loadLastPrice(this)
 
+        // Set whether notifications should vibrate.
+        if (lastPrice.peakPrice != -99.0) {
+            val lastPriceRange = PriceRange(lastPrice.peakPrice, lastPrice.troughPrice)
+            val lastSuffix = generateSuffix(
+                lastPrice.priceTimeMap!!.values.first(),
+                lastPriceRange,
+            )
+            if (lastSuffix in listOf("❗", "‼️")) {
+                notificationBuilder.doVibration(settings.vibrate)
+            } else {
+                notificationBuilder.doVibration(false)
+            }
+        } else {
+            notificationBuilder.doVibration(settings.vibrate)
+        }
+
+        var formattedPrice = "€%.2f".format(priceData.priceTimeMap.values.first())
+        var suffix = if (range > 0) {
+            generateSuffix(
+                priceData.priceTimeMap.values.first(),
+                PriceRange(priceData.peakPrice, priceData.troughPrice)
+            )
+        } else {
+            ""
+        }
+        stringBuilder.appendLine(formatLine(
+            "\uD83D\uDCA1", " Now ", formattedPrice, suffix, targetWidth)
+        )
+
         // Second pass: build final message using the computed targetWidth.
         priceData.priceTimeMap.entries.forEachIndexed { index, entry ->
+            if (index == 0) return@forEachIndexed // Skip the first entry (now line)
+
             val date = entry.key
             val price = entry.value
-            var suffix = ""
-            val formattedPrice = "€%.2f".format(price)
+            formattedPrice = "€%.2f".format(price)
 
             if (range > 0) {
-                val peakThreshold1 = priceData.peakPrice - 0.1 * range
-                val peakThreshold2 = priceData.peakPrice - 0.4 * range
-                val troughThreshold1 = priceData.troughPrice + 0.1 * range
-                val troughThreshold2 = priceData.troughPrice + 0.3 * range
+                val priceRange = PriceRange(priceData.peakPrice, priceData.troughPrice)
 
                 suffix = generateSuffix(
                     price,
-                    priceData.troughPrice,
-                    priceData.peakPrice,
-                    range,
-                    peakThreshold1,
-                    peakThreshold2,
-                    troughThreshold1,
-                    troughThreshold2
+                    priceRange
                 )
-                if (index == 0) {
-                    if (lastPrice.peakPrice != -99.0) {
-                        val lastSuffix = generateSuffix(
-                            lastPrice.priceTimeMap!!.values.first(),
-                            lastPrice.troughPrice,
-                            lastPrice.peakPrice,
-                            lastPrice.peakPrice - 0.1 * (lastPrice.peakPrice - lastPrice.troughPrice),
-                            lastPrice.peakPrice - 0.1 * (lastPrice.peakPrice - lastPrice.troughPrice),
-                            lastPrice.peakPrice - 0.4 * (lastPrice.peakPrice - lastPrice.troughPrice),
-                            lastPrice.troughPrice + 0.1 * (lastPrice.peakPrice - lastPrice.troughPrice),
-                            lastPrice.troughPrice + 0.3 * (lastPrice.peakPrice - lastPrice.troughPrice)
-                        )
-                        if (lastSuffix !in listOf("❗", "‼️") && suffix in listOf("❗", "‼️")) {
-                            if (settings.vibrate) {
-                                notificationBuilder.doVibration(settings.vibrate)
-                            } else {
-                                notificationBuilder.doVibration(false)
-                            }
-                        } else {
-                            notificationBuilder.doVibration(false)
-                        }
-                    } else {
-                        notificationBuilder.doVibration(settings.vibrate)
-                    }
-                }
+            }
+            val prevDate = keysList[index - 1]
+            if (isNewDay(prevDate, date)) {
+                val currentDate = Calendar.getInstance().apply { time = date }
+                stringBuilder.appendLine(
+                    "\uD83C\uDF03   —— ${currentDate.get(Calendar.DAY_OF_MONTH)} ${currentDate.getDisplayName(Calendar.MONTH, Calendar.SHORT, Locale.US)} ——"
+                )
             }
 
-            // Add header line when a new day is detected.
-            if (index > 0) {
-                val prevDate = keysList[index - 1]
-                if (isNewDay(prevDate, date)) {
-                    val currentDate = Calendar.getInstance().apply { time = date }
-                    returnString += "\uD83C\uDF03   —— ${currentDate.get(Calendar.DAY_OF_MONTH)} ${currentDate.getDisplayName(Calendar.MONTH, Calendar.SHORT, Locale.US)} ——\n"
-                }
-            }
-
-            // Use our precomputed baseLineData along with the targetWidth.
-            if (index == 0) {
-                returnString += formatLine("\uD83D\uDCA1", " Now ", formattedPrice, suffix, targetWidth) + "\n"
-            } else {
-                returnString += formatLine(
+            stringBuilder.appendLine(
+                formatLine(
                     baseLineData[index].first,
                     baseLineData[index].second,
                     baseLineData[index].third,
                     suffix,
                     targetWidth
-                ) + "\n"
-            }
+                )
+            )
         }
 
-        return returnString.trimEnd()
+        return stringBuilder.toString().trimEnd()
     }
 
+    data class PriceRange(
+        val peak: Double,
+        val trough: Double,
+    ) {
+        val range = peak - trough
+        val peak1  = peak - 0.1 * range
+        val peak2  = peak - 0.4 * range
+        val low1   = trough + 0.1 * range
+        val low2   = trough + 0.3 * range
+    }
 
     private fun generateSuffix(
         price: Double,
-        min: Double,
-        max: Double,
-        range: Double,
-        peakThreshold1: Double,
-        peakThreshold2: Double,
-        troughThreshold1: Double,
-        troughThreshold2: Double
+        range: PriceRange,
     ) = when {
-        price == min -> "|⭐"
-        range < 0.06 -> "|"
-        price > peakThreshold1 && range > 0.15 -> "|‼\uFE0F"
-        price == max || price > peakThreshold2 -> "|❗"
-        price < troughThreshold1 -> "|⭐"
-        price < troughThreshold2 && range > 0.10 -> "|🌱"
-        else -> "|"
+        price < range.low1
+            -> " |⭐"
+
+        range.range < 0.06
+        && price < range.low2
+            -> " |"
+
+        range.range < 0.06
+        && price > range.peak1
+        -> " |❗"
+
+        price > range.peak1
+            -> " |‼\uFE0F"
+
+        price > range.peak2
+        && range.range > 0.10
+            -> " |❗"
+
+        price < range.low2
+        && range.range > 0.10
+            -> " |🌱"
+
+        else -> " |"
     }
 
     private fun isNewDay(date1: Date, date2: Date): Boolean {
