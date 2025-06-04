@@ -18,12 +18,21 @@ import android.provider.Settings as AndroidSettings
 class AlarmScheduler : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        scheduleHourlyAlarm(context)
+        when (intent.action) {
+            WATCHDOG_ACTION -> {
+                ensureHourlyAlarm(context)
+                scheduleWatchdogAlarm(context)
+            }
+            else -> {
+                scheduleHourlyAlarm(context)
 
-        // Start service to show notification
-        context.startForegroundService(Intent(context, EnergyNotificationService::class.java))
+                // Start service to show notification
+                context.startForegroundService(Intent(context, EnergyNotificationService::class.java))
 
-        Log.println(Log.INFO, "PrijsWijs", "HourlyReceiver triggered")
+                Log.println(Log.INFO, "PrijsWijs", "HourlyReceiver triggered")
+                scheduleWatchdogAlarm(context)
+            }
+        }
     }
 
     fun scheduleHourlyAlarm(context: Context) {
@@ -46,7 +55,7 @@ class AlarmScheduler : BroadcastReceiver() {
 
         // Now point directly to EnergyNotificationService
         val intent = Intent(context, AlarmScheduler::class.java).apply {
-            action = "HOURLY_UPDATE_ACTION"
+            action = HOURLY_ACTION
         }
         // Use getService instead of getBroadcast
         val pendingIntent = PendingIntent.getBroadcast(
@@ -103,7 +112,47 @@ class AlarmScheduler : BroadcastReceiver() {
             calendar.timeInMillis,
             pendingIntent
         )
+
+        scheduleWatchdogAlarm(context)
     }
 
-    private val HOURLY_REQUEST_CODE = 1337420
+    private fun ensureHourlyAlarm(context: Context) {
+        val exists = PendingIntent.getBroadcast(
+            context,
+            HOURLY_REQUEST_CODE,
+            Intent(context, AlarmScheduler::class.java).apply { action = HOURLY_ACTION },
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        ) != null
+
+        if (!exists) {
+            scheduleHourlyAlarm(context)
+        }
+    }
+
+    fun scheduleWatchdogAlarm(context: Context) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java)
+        val intent = Intent(context, AlarmScheduler::class.java).apply {
+            action = WATCHDOG_ACTION
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            WATCHDOG_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val triggerAt = System.currentTimeMillis() + 30 * 60 * 1000
+
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            triggerAt,
+            pendingIntent
+        )
+    }
+
+    companion object {
+        private const val HOURLY_REQUEST_CODE = 1337420
+        private const val WATCHDOG_REQUEST_CODE = 1337421
+        const val HOURLY_ACTION = "HOURLY_UPDATE_ACTION"
+        const val WATCHDOG_ACTION = "WATCHDOG_ACTION"
+    }
 }

@@ -24,6 +24,7 @@ class BootReceiver : BroadcastReceiver() {
 
       // Schedule hourly updates
       scheduler.scheduleHourlyAlarm(context)
+      scheduler.scheduleWatchdogAlarm(context)
     }
   }
 }
