@@ -50,6 +50,7 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="HOURLY_UPDATE_ACTION" />
+                <action android:name="WATCHDOG_ACTION" />
             </intent-filter>
         </receiver>
 
